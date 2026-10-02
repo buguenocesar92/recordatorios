@@ -112,10 +112,10 @@ it('el mismo correo dos veces en 24 h: misma respuesta y un solo correo', functi
     turnstileResponde(true);
 
     $primera = enviarLista()->assertOk();
-    Mail::assertQueued(WaitlistConfirmationMail::class, 1);
+    Mail::assertSent(WaitlistConfirmationMail::class, 1);
 
     $segunda = enviarLista(['email' => 'ANA@example.com '])->assertOk();
-    Mail::assertQueued(WaitlistConfirmationMail::class, 1);
+    Mail::assertSent(WaitlistConfirmationMail::class, 1);
 
     $sinNonce = fn (string $html): string => preg_replace('/nonce="[^"]*"/', '', $html);
     expect($sinNonce($segunda->getContent()))->toBe($sinNonce($primera->getContent()))

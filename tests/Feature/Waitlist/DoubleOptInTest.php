@@ -36,7 +36,7 @@ function inscribir(string $email = 'ana@example.com'): array
     ])->assertOk();
 
     $token = null;
-    Mail::assertQueued(WaitlistConfirmationMail::class, function (WaitlistConfirmationMail $correo) use ($email, &$token): bool {
+    Mail::assertSent(WaitlistConfirmationMail::class, function (WaitlistConfirmationMail $correo) use ($email, &$token): bool {
         $token = $correo->token;
 
         return $correo->hasTo($email);

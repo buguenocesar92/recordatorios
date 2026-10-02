@@ -23,6 +23,9 @@ return [
 
     'resend_cooldown_hours' => 24,
 
+    // Cuánto se conserva en failed_jobs un envío de confirmación fallido.
+    'failed_job_retention_hours' => 24,
+
     'ip_attempts_per_minute' => 5,
 
     'survey_link_ttl_minutes' => 120,
