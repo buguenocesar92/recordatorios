@@ -11,6 +11,32 @@ marcador es ajeno, mirá `git log --oneline -5` y `git status` antes de cualquie
 `reset`/checkout, y commiteá siempre con `git commit --only -- <rutas>` (el índice
 es compartido). Detalle y motivo en `~/Dev/CLAUDE.md`.
 
+# Probidad y conflicto de intereses (spec §0) — NO NEGOCIABLE
+
+Este MVP es de **KraftDo SpA**. Su dueño es funcionario de la Municipalidad de Graneros y
+el producto toca pagos municipales. Por eso, en este repo y en todo lo que derive de él:
+
+1. **Prohibido usar cualquier cosa de la Municipalidad de Graneros**: código, datos,
+   credenciales, documentos internos, contactos, calendarios internos, ordenanzas no
+   publicadas ni conocimiento adquirido en el cargo. Ni como referencia, ni como fuente de
+   fechas, ni como ejemplo. Nada se copia desde `~/Dev/Graneros`, `~/Dev/*-graneros`,
+   `~/Dev/plataforma-graneros` ni de los paquetes municipales. La comuna de Graneros es una
+   fila más del catálogo público y se trata igual que las otras 345: solo desde su web
+   pública, citada con URL. El candado es `tests/Guardrails/SinReferenciasMunicipalesInternasTest.php`.
+2. **Fechas y reglas solo de fuentes públicas oficiales, citadas** (TGR, SII, ChileAtiende,
+   gob.cl, BCN, CONASET/CMF, portales públicos de cada municipio). Lo no confirmado queda
+   **«no verificado»** y así se le muestra al usuario.
+3. **Público: solo personas naturales.** Ofrecer, vender, presentar o conversar con
+   **cualquier** municipalidad exige antes una revisión de probidad por un asesor legal
+   **independiente** (pendiente L18). **A Graneros no se le ofrece nada, nunca**, salvo que
+   ese asesor lo diga por escrito y expresamente.
+4. Este repo **no prepara** ofertas, presentaciones, convenios ni contactos con municipios.
+5. La landing, la política de privacidad y cada mensaje dicen que **no es un servicio del
+   Estado ni de ningún municipio** y que el pago vale solo en el canal oficial.
+
+Spec y plan: `docs/superpowers/specs/2026-10-01-recordatorios-design.md`,
+`docs/superpowers/plans/2026-10-01-recordatorios.md`. Repo **solo local**: sin remoto, sin push.
+
 # Usa SIEMPRE las herramientas disponibles en este repo
 
 Antes de trabajar de memoria, aprovecha lo que este proyecto ya trae. En orden:
@@ -415,11 +441,13 @@ No duplicar ese contenido acá: si una convención cambia, se cambia en la skill
 
 | Paquete | Versión |
 |---|---|
-| laravel/framework | `v13.20.0` |
+| laravel/framework | `v13.30.1` |
 | livewire/livewire | `v4.4.2` |
 | filament/filament | `v5.7.6` |
-| muni-graneros/laravel-muni-ui | `v0.16.0` |
-| muni-graneros/laravel-muni-shared | `v1.16.0` |
+| laravel/octane | `v2.19.1` |
+| pestphp/pest | `v4.7.8` |
+| tailwindcss / vite (npm) | `4.3.3` / `^8.3.0` |
+| Paquetes compartidos (KraftDo o municipales) | **ninguno**, a propósito: ver README, «Decisión de origen» |
 | bezhansalleh/filament-shield | `4.2.0` — **fijado a propósito**, ver `docs/superpowers/auditoria/2026-08-26-shield-4.3-bloqueado.md` |
 | spatie/laravel-csp | `3.29.0` — escribe la política de contenido; presets en `app/Support/Csp`, ver `.ai/rules/cabeceras-y-csp.md` |
 | motion (npm) | `^13.1.0` — en v13 la opción es `ease`, NO `easing` (v10, se ignora en silencio) |
