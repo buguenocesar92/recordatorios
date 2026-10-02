@@ -187,6 +187,7 @@ it('el candado no tumba el build de la imagen', function () {
     // mostrar el código. Se fijan así para no depender del .env de quien prueba.
     config()->set('mfa.enabled', true);
     config()->set('mfa.show_code', false);
+    config()->set('waitlist.hash_salt', str_repeat('s', 32));
 
     CredencialesDePlantilla::comprobar();
 

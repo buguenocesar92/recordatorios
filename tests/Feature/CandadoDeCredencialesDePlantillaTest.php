@@ -73,6 +73,21 @@ it('en producción, con todo en orden, arranca', function () {
     config()->set('backup.backup.password', 'otra-de-verdad');
     config()->set('mfa.enabled', true);
     config()->set('mfa.show_code', false);
+    config()->set('waitlist.hash_salt', str_repeat('s', 32));
 
     CredencialesDePlantilla::comprobar();
 })->throwsNoExceptions();
+
+it('en producción no arranca sin la sal de la lista de espera', function (string $sal) {
+    app()['env'] = 'production';
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('database.default', 'mariadb');
+    config()->set('database.connections.mariadb.password', 'una-de-verdad');
+    config()->set('backup.backup.password', '');
+    config()->set('mfa.enabled', true);
+    config()->set('mfa.show_code', false);
+    config()->set('waitlist.hash_salt', $sal);
+
+    CredencialesDePlantilla::comprobar();
+})->with(['vacía' => '', 'corta' => 'corta'])
+    ->throws(RuntimeException::class, 'WAITLIST_HASH_SALT');

@@ -16,7 +16,9 @@ use RuntimeException;
  *   publicada como valor por omisión; sigue en el historial de git);
  * - el segundo factor apagado (`MFA_ENABLED=false`) o regalado en pantalla
  *   (`MFA_SHOW_CODE=true`): con cualquiera de los dos, una contraseña robada
- *   basta para entrar al panel.
+ *   basta para entrar al panel;
+ * - la sal de la lista de espera vacía o corta: sin ella `email_hash` e
+ *   `ip_hash` dejan de ser seudónimos.
  *
  * Se llama como PRIMERA línea de AppServiceProvider::boot(). Sin clave de
  * aplicación no hay nada que proteger: es el arranque de `composer install`
@@ -72,6 +74,13 @@ final class CredencialesDePlantilla
             throw new RuntimeException(
                 'El código del segundo factor se muestra en pantalla (MFA_SHOW_CODE). '
                 .'En producción eso equivale a no tener segundo factor.'
+            );
+        }
+
+        if (strlen((string) config('waitlist.hash_salt')) < 16) {
+            throw new RuntimeException(
+                'Falta la sal de la lista de espera (WAITLIST_HASH_SALT, al menos 16 caracteres). '
+                .'Sin ella, los hash de correo e IP se pueden recalcular desde un correo conocido.'
             );
         }
     }
