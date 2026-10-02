@@ -188,6 +188,8 @@ it('el candado no tumba el build de la imagen', function () {
     config()->set('mfa.enabled', true);
     config()->set('mfa.show_code', false);
     config()->set('waitlist.hash_salt', str_repeat('s', 32));
+    config()->set('services.turnstile.sitekey', '0x4AAAAAAAreal');
+    config()->set('services.turnstile.secret', '0x4AAAAAAAsecretoreal');
 
     CredencialesDePlantilla::comprobar();
 

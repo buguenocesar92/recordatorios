@@ -72,6 +72,8 @@
     --sitio-foco: var(--marca-acento);
     --sitio-barra-texto: #eaf5f3;
     --sitio-barra-texto-suave: var(--marca-barra-texto);
+    /* Errores de formulario: #b42318 mide 6,5:1 sobre blanco y 6:1 sobre el lienzo. */
+    --sitio-error: #b42318;
 }
 
 /* ── Semánticos, modo OSCURO (solo por prefers-color-scheme) ──────────────
@@ -94,6 +96,8 @@
         --sitio-acento-fuerte: var(--marca-realce-claro);
         --sitio-sobre-acento: var(--marca-tinta-profunda);
         --sitio-foco: var(--marca-acento-claro);
+        /* #fca5a5 mide ≥ 9:1 sobre la superficie oscura. */
+        --sitio-error: #fca5a5;
     }
 }
 
@@ -119,6 +123,7 @@
     --color-foco: var(--sitio-foco);
     --color-barra-texto: var(--sitio-barra-texto);
     --color-barra-texto-suave: var(--sitio-barra-texto-suave);
+    --color-error: var(--sitio-error);
 }
 
 @layer base {

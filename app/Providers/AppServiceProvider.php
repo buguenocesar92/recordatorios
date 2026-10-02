@@ -7,6 +7,7 @@ use App\Http\Middleware\AcotarVidaDeSesion;
 use App\Http\Middleware\SinCacheParaAutenticados;
 use App\Http\Middleware\TwoFactorAuthentication;
 use App\Listeners\RegistrarAcceso;
+use App\Models\WaitlistSignup;
 use App\Notifications\Auth\RestablecerContrasenaNotification;
 use App\Policies\ActivityPolicy;
 use App\Support\CredencialesDePlantilla;
@@ -20,11 +21,14 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -75,6 +79,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         CredencialesDePlantilla::comprobar();
+
+        $this->limitesDeLaListaDeEspera();
 
         // Lo primero del arranque: si la instalación de producción trae una
         // credencial publicada en el repositorio (contraseña de la base o de los
@@ -287,5 +293,21 @@ class AppServiceProvider extends ServiceProvider
                 ? $regla
                 : $regla->uncompromised();
         });
+    }
+
+    /**
+     * Límites de la lista de espera (spec §10). La clave es el HMAC de la IP, no
+     * la IP: ni la caché guarda direcciones en claro. El límite por correo
+     * (uno cada 24 h) vive en App\Waitlist\SignupService porque su respuesta
+     * tiene que ser idéntica a la de un alta normal.
+     */
+    private function limitesDeLaListaDeEspera(): void
+    {
+        RateLimiter::for('waitlist-ip', fn (Request $request): Limit => Limit::perMinute((int) config('waitlist.ip_attempts_per_minute', 5))
+            ->by('waitlist-ip:'.WaitlistSignup::hashIp($request->ip()))
+            ->response(fn (Request $request, array $cabeceras) => response(view('lista.demasiados')->render(), 429, $cabeceras)));
+
+        RateLimiter::for('waitlist-token', fn (Request $request): Limit => Limit::perMinute(30)
+            ->by('waitlist-token:'.WaitlistSignup::hashIp($request->ip())));
     }
 }

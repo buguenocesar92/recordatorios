@@ -175,6 +175,7 @@ function directivasDeLaRespuesta(string $ruta): array
 
 dataset('superficies con política', [
     'sitio' => ['/'],
+    'sitio sin formulario' => ['/privacidad'],
     'panel' => ['/admin/login'],
 ]);
 
@@ -217,6 +218,15 @@ it('ninguna directiva autoriza a un tercero', function (string $ruta) {
     }
 
     sort($intrusos);
+
+    // Única excepción, y exacta: la portada lleva el widget de Cloudflare
+    // Turnstile (subencargado declarado, spec §9). Solo su guion y su marco.
+    if ($ruta === '/') {
+        $intrusos = array_values(array_diff($intrusos, [
+            'frame-src https://challenges.cloudflare.com',
+            'script-src https://challenges.cloudflare.com',
+        ]));
+    }
 
     // Se compara con toBe([]) y no con toContain(): en Pest el segundo
     // argumento de toContain() es otro patrón a buscar, no un mensaje de fallo,

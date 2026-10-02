@@ -40,30 +40,24 @@ return [
 
     'nombre' => $nombre,
 
-    'descripcion' => env('SITIO_DESCRIPCION') ?: 'Sistema para hacer trámites y consultas en línea.',
+    'descripcion' => env('SITIO_DESCRIPCION') ?: 'Recordatorios por correo antes de que venzan tus contribuciones, permiso de circulación, SOAP, patente municipal y derechos de aseo. No es un servicio del Estado ni de ningún municipio.',
 
     'entidad' => [
-        // ENTIDAD-DEL-SITIO: lo rellena tools/usar-paquete-compartido.php según --shared
         'tipo' => 'empresa',
-        'nombre' => env('SITIO_ENTIDAD') ?: $nombre,
+        'nombre' => env('SITIO_ENTIDAD') ?: 'KraftDo SpA',
         'url' => env('APP_URL'),
         'direccion' => env('SITIO_DIRECCION', ''),
         'telefono' => env('SITIO_TELEFONO', ''),
         'correo' => env('SITIO_CORREO', ''),
     ],
 
+    // El panel es solo por VPN: la landing no enlaza a ningún ingreso. La
+    // clave queda porque la usa el resto del andamio (robots, redirecciones).
     'ingreso' => 'filament.admin.auth.login',
 
     'portada' => [
-        'claim' => 'Trámites y consultas en línea, sin vueltas',
-        'bajada' => 'Una o dos líneas que explican para quién es este sistema y qué resuelve. Se editan en config/sitio.php.',
-        'cta' => ['texto' => 'Ingresar', 'ruta' => null],
-        'servicios' => [
-            ['titulo' => 'Servicio 1', 'descripcion' => 'Qué se puede hacer acá y a quién le sirve.', 'ruta' => null],
-            ['titulo' => 'Servicio 2', 'descripcion' => 'Qué se puede hacer acá y a quién le sirve.', 'ruta' => null],
-            ['titulo' => 'Servicio 3', 'descripcion' => 'Qué se puede hacer acá y a quién le sirve.', 'ruta' => null],
-        ],
-        // ['src' => 'imagenes/portada.webp', 'ancho' => 1600, 'alto' => 900, 'alt' => 'Qué muestra la imagen']
+        'claim' => 'Te avisamos antes de que venza lo que pagas cada año',
+        'bajada' => 'Contribuciones, permiso de circulación, SOAP, patente municipal y derechos de aseo: un recordatorio por correo con anticipación, para que no te enteres por la multa.',
         'imagen' => null,
     ],
 

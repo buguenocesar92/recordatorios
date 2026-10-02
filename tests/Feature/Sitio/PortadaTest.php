@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ObligationTypeCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
@@ -46,11 +47,14 @@ it('no lleva Livewire, Alpine ni ningún script ejecutable', function () {
         ->and($html)->not->toContain('x-data')
         ->and($html)->not->toContain('resources/js/');
 
-    // El único <script> permitido es el JSON-LD, que el navegador no ejecuta.
+    // Solo dos <script>: el JSON-LD (el navegador no lo ejecuta) y el widget
+    // de Cloudflare Turnstile, autorizado por host en la política de la portada.
     preg_match_all('/<script\b([^>]*)>/i', $html, $scripts);
     foreach ($scripts[1] as $atributos) {
-        expect($atributos)->toContain('application/ld+json');
+        expect(str_contains($atributos, 'application/ld+json')
+            || str_contains($atributos, 'src="https://challenges.cloudflare.com/turnstile/v0/api.js"'))->toBeTrue("script no permitido: {$atributos}");
     }
+    expect(count($scripts[1]))->toBe(2);
 });
 
 it('no arranca sesión ni emite cookies', function () {
@@ -59,10 +63,8 @@ it('no arranca sesión ni emite cookies', function () {
     expect($respuesta->headers->get('set-cookie'))->toBeNull();
 });
 
-it('enlaza a la única puerta de ingreso', function () {
-    // Relativa a propósito (ver PortadaController): un enlace interno no
-    // necesita host.
-    $this->get('/')->assertSee(route('filament.admin.auth.login', [], false), false);
+it('no enlaza al panel: el panel del dueño es solo por VPN', function () {
+    $this->get('/')->assertDontSee(route('filament.admin.auth.login', [], false), false);
 });
 
 it('la única respuesta que vence una cookie vieja de «Recordarme» no es cacheable', function () {
@@ -162,21 +164,12 @@ it('tiene skip link, landmarks y navegación con nombre', function () {
         ->and($html)->toContain('<footer');
 });
 
-it('lista los servicios configurados y enlaza cada uno si tiene ruta', function () {
-    config()->set('sitio.portada.servicios', [
-        ['titulo' => 'Permisos', 'descripcion' => 'Pedir un permiso.', 'ruta' => 'filament.admin.auth.login'],
-        ['titulo' => 'Consultas', 'descripcion' => 'Ver el estado.', 'ruta' => null],
-    ]);
-
+it('ofrece una casilla por cada tipo de obligación', function () {
     $html = $this->get('/')->getContent();
 
-    expect($html)->toContain('id="servicios"')
-        ->and($html)->toContain('Permisos')->toContain('Pedir un permiso.')
-        ->and($html)->toContain('Consultas')->toContain('Ver el estado.');
-
-    // Con ruta, el título es un enlace; sin ruta, no hay un <a> vacío.
-    // Enlace relativo a propósito (ver PortadaController): el HTML no lleva el host.
-    expect(substr_count($html, 'href="'.route('filament.admin.auth.login', [], false).'"'))->toBeGreaterThanOrEqual(2);
+    foreach (ObligationTypeCode::cases() as $tipo) {
+        expect($html)->toContain($tipo->label());
+    }
 });
 
 it('el pie muestra solo los datos de contacto configurados', function () {
@@ -186,6 +179,6 @@ it('el pie muestra solo los datos de contacto configurados', function () {
 
     expect($html)->toContain('Entidad de Prueba')
         ->and($html)->toContain('+56 9 0000 0000')
-        ->and($html)->toContain('Ley 21.719')
+        ->and($html)->toContain('No es un servicio del Estado ni de ningún municipio')
         ->and($html)->not->toContain('mailto:');
 });

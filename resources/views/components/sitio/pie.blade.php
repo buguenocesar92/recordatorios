@@ -1,6 +1,7 @@
 {{--
-    Pie del sitio público: quién responde por el sistema y cómo contactarlo.
-    Solo lo configurado; un dato vacío no deja un rótulo huérfano.
+    Pie del sitio público: quién responde, qué no es, y los textos legales.
+    Solo los datos de contacto configurados; un dato vacío no deja un rótulo
+    huérfano.
 --}}
 @php
     $entidad = (array) config('sitio.entidad');
@@ -22,8 +23,12 @@
             </ul>
         </div>
         <div class="max-w-md text-atenuado">
-            <p>Los datos personales que se entregan en este sistema se tratan según la Ley 21.719, solo para el trámite que los pide.</p>
-            <p class="mt-2"><a href="{{ route(config('sitio.ingreso'), [], false) }}" class="inline-flex min-h-11 items-center underline-offset-2 hover:underline">Acceso para el personal</a></p>
+            <p><strong class="text-tinta">No es un servicio del Estado ni de ningún municipio.</strong> El pago de cada obligación vale solo en su canal oficial.</p>
+            <ul class="mt-2 flex flex-wrap gap-x-4">
+                <li><a href="/privacidad" class="inline-flex min-h-11 items-center underline-offset-2 hover:underline">Privacidad</a></li>
+                <li><a href="/terminos" class="inline-flex min-h-11 items-center underline-offset-2 hover:underline">Términos</a></li>
+                <li><a href="/que-no-hacemos" class="inline-flex min-h-11 items-center underline-offset-2 hover:underline">Qué no hacemos</a></li>
+            </ul>
         </div>
     </div>
 </footer>

@@ -12,6 +12,7 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 use Sentry\Laravel\Integration;
 use Spatie\Csp\AddCspHeaders;
@@ -27,6 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // El sitio público (landing). Trae su propio grupo de middleware;
             // ver routes/sitio.php.
             Route::middleware('sitio')->group(base_path('routes/sitio.php'));
+
+            // La lista de espera: sin sesión, sin caché. Ver routes/lista-de-espera.php.
+            Route::middleware('lista')->group(base_path('routes/lista-de-espera.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -83,6 +87,18 @@ return Application::configure(basePath: dirname(__DIR__))
             CabecerasDeEndurecimiento::class,
             AddQueuedCookiesToResponse::class,
             'cache.headers:public;max_age=300;s_maxage=300;etag',
+        ]);
+
+        // La lista de espera (formulario de la portada, confirmación, baja):
+        // las mismas cabeceras que el sitio, el enlace de modelos para
+        // {signup}, y no-store en todo. Sin sesión ni CSRF de sesión: el
+        // origen lo verifica VerificarOrigenDelFormulario ruta por ruta.
+        $middleware->group('lista', [
+            NoncePorPeticion::class,
+            AddCspHeaders::class,
+            CabecerasDeEndurecimiento::class,
+            SubstituteBindings::class,
+            SinCacheParaAutenticados::class,
         ]);
 
         // Rotar la contraseña cierra TODAS las sesiones abiertas, no solo las del

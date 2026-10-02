@@ -74,9 +74,30 @@ it('en producción, con todo en orden, arranca', function () {
     config()->set('mfa.enabled', true);
     config()->set('mfa.show_code', false);
     config()->set('waitlist.hash_salt', str_repeat('s', 32));
+    config()->set('services.turnstile.sitekey', '0x4AAAAAAAreal');
+    config()->set('services.turnstile.secret', '0x4AAAAAAAsecretoreal');
 
     CredencialesDePlantilla::comprobar();
 })->throwsNoExceptions();
+
+it('en producción no arranca con Turnstile vacío o con las claves de prueba', function (string $sitekey, string $secreto) {
+    app()['env'] = 'production';
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('database.default', 'mariadb');
+    config()->set('database.connections.mariadb.password', 'una-de-verdad');
+    config()->set('backup.backup.password', '');
+    config()->set('mfa.enabled', true);
+    config()->set('mfa.show_code', false);
+    config()->set('waitlist.hash_salt', str_repeat('s', 32));
+    config()->set('services.turnstile.sitekey', $sitekey);
+    config()->set('services.turnstile.secret', $secreto);
+
+    CredencialesDePlantilla::comprobar();
+})->with([
+    'vacías' => ['', ''],
+    'secreto de prueba' => ['0x4AAAAAAAreal', '1x0000000000000000000000000000000AA'],
+    'sitekey de prueba' => ['1x00000000000000000000AA', '0x4AAAAAAAsecretoreal'],
+])->throws(RuntimeException::class, 'Turnstile');
 
 it('en producción no arranca sin la sal de la lista de espera', function (string $sal) {
     app()['env'] = 'production';

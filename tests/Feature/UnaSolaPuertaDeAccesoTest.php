@@ -87,12 +87,11 @@ it('la puerta retirada ya no responde, ni con otro nombre', function () {
         ->assertNotFound();
 });
 
-it('la raíz es la portada pública y enlaza al único formulario que queda', function () {
-    // Desde 2026-09-11 «/» ya no redirige: es la landing (routes/sitio.php).
-    // Lo que sigue valiendo es que desde ahí se llega a la única puerta. El
-    // enlace es relativo a propósito (ver PortadaController): un enlace
-    // interno no necesita host.
-    $this->get('/')->assertOk()->assertSee(route('filament.admin.auth.login', [], false), false);
+it('la raíz es la portada pública y NO anuncia la puerta del panel', function () {
+    // «/» es la landing (routes/sitio.php). En este producto el panel es solo
+    // por VPN: la página pública no enlaza al ingreso, que solo le mostraría la
+    // puerta a quien no debe tocarla. La puerta sigue siendo una sola.
+    $this->get('/')->assertOk()->assertDontSee(route('filament.admin.auth.login', [], false), false);
 });
 
 it('a quien no ha iniciado sesión se lo manda al formulario que sí existe', function () {

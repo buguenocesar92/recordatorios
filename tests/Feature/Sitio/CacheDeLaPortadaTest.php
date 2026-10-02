@@ -51,7 +51,7 @@ it('el ETag cambia si cambia el HTML aunque la configuración no cambie', functi
     $etagOriginal = (string) $this->get('/')->headers->get('ETag');
 
     View::composer('sitio.portada', function ($vista): void {
-        $vista->with('ctaTexto', 'Otro texto');
+        $vista->with('portada', ['claim' => 'Otro claim', 'bajada' => 'Otra bajada']);
     });
 
     $etagNuevo = (string) $this->get('/')->headers->get('ETag');

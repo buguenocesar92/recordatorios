@@ -18,7 +18,8 @@ use RuntimeException;
  *   (`MFA_SHOW_CODE=true`): con cualquiera de los dos, una contraseña robada
  *   basta para entrar al panel;
  * - la sal de la lista de espera vacía o corta: sin ella `email_hash` e
- *   `ip_hash` dejan de ser seudónimos.
+ *   `ip_hash` dejan de ser seudónimos;
+ * - Turnstile sin claves o con las de prueba de Cloudflare.
  *
  * Se llama como PRIMERA línea de AppServiceProvider::boot(). Sin clave de
  * aplicación no hay nada que proteger: es el arranque de `composer install`
@@ -81,6 +82,18 @@ final class CredencialesDePlantilla
             throw new RuntimeException(
                 'Falta la sal de la lista de espera (WAITLIST_HASH_SALT, al menos 16 caracteres). '
                 .'Sin ella, los hash de correo e IP se pueden recalcular desde un correo conocido.'
+            );
+        }
+
+        $secreto = (string) config('services.turnstile.secret');
+        $sitekey = (string) config('services.turnstile.sitekey');
+
+        // Las claves de prueba de Cloudflare empiezan por 1x, 2x o 3x seguidas
+        // de ceros: con ellas Turnstile no protege nada.
+        if ($secreto === '' || $sitekey === '' || preg_match('/^[123]x0{10,}/', $secreto) === 1 || preg_match('/^[123]x0{10,}/', $sitekey) === 1) {
+            throw new RuntimeException(
+                'Turnstile sin claves propias (TURNSTILE_SITEKEY / TURNSTILE_SECRET): vacías o de prueba. '
+                .'Con ellas la lista de espera queda sin anti-bots.'
             );
         }
     }

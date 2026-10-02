@@ -35,7 +35,8 @@ it('la configuración del sitio trae las claves de la portada', function () {
     expect(config('sitio.nombre'))->toBeString()->not->toBe('')
         ->and(config('sitio.entidad.tipo'))->toBeIn(['organizacion', 'municipalidad', 'empresa'])
         ->and(config('sitio.ingreso'))->toBe('filament.admin.auth.login')
-        ->and(config('sitio.portada.servicios'))->toBeArray()->toHaveCount(3)
+        ->and(config('sitio.portada.claim'))->toBeString()->not->toBe('')
+        ->and(config('sitio.portada.bajada'))->toBeString()->not->toBe('')
         ->and(config('sitio.portada.imagen'))->toBeNull();
 });
 
