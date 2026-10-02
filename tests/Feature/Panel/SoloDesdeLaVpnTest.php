@@ -54,3 +54,19 @@ it('la portada pública no se ve afectada', function () {
 it('la variable se lee de ADMIN_VPN_CIDR separada por comas', function () {
     expect((string) file_get_contents(config_path('panel.php')))->toContain("env('ADMIN_VPN_CIDR'");
 });
+
+it('sin subred configurada solo se abre en local y testing: cualquier otro entorno falla cerrado', function (string $entorno, bool $abre) {
+    config()->set('panel.vpn_cidr', []);
+    $this->app->detectEnvironment(fn (): string => $entorno);
+
+    $abre
+        ? desdeIp('203.0.113.5')->assertOk()
+        : desdeIp('203.0.113.5')->assertNotFound();
+})->with([
+    'local' => ['local', true],
+    'testing' => ['testing', true],
+    'production' => ['production', false],
+    'staging' => ['staging', false],
+    'prod (mal escrito)' => ['prod', false],
+    'vacío' => ['', false],
+]);

@@ -19,7 +19,9 @@ use RuntimeException;
  *   basta para entrar al panel;
  * - la sal de la lista de espera vacía o corta: sin ella `email_hash` e
  *   `ip_hash` dejan de ser seudónimos;
- * - Turnstile sin claves o con las de prueba de Cloudflare.
+ * - Turnstile sin claves o con las de prueba de Cloudflare, o sin hostname
+ *   esperado (TURNSTILE_HOSTNAME): sin él se acepta un token resuelto en
+ *   cualquier otro sitio con la misma clave.
  *
  * Se llama como PRIMERA línea de AppServiceProvider::boot(). Sin clave de
  * aplicación no hay nada que proteger: es el arranque de `composer install`
@@ -94,6 +96,13 @@ final class CredencialesDePlantilla
             throw new RuntimeException(
                 'Turnstile sin claves propias (TURNSTILE_SITEKEY / TURNSTILE_SECRET): vacías o de prueba. '
                 .'Con ellas la lista de espera queda sin anti-bots.'
+            );
+        }
+
+        if (trim((string) config('services.turnstile.hostname')) === '') {
+            throw new RuntimeException(
+                'Falta TURNSTILE_HOSTNAME (el dominio público de la landing). Sin él, el servidor no comprueba '
+                .'en qué sitio se resolvió el desafío y acepta tokens de cualquier otro.'
             );
         }
     }

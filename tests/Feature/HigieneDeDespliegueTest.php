@@ -190,6 +190,7 @@ it('el candado no tumba el build de la imagen', function () {
     config()->set('waitlist.hash_salt', str_repeat('s', 32));
     config()->set('services.turnstile.sitekey', '0x4AAAAAAAreal');
     config()->set('services.turnstile.secret', '0x4AAAAAAAsecretoreal');
+    config()->set('services.turnstile.hostname', 'recordatorios.example');
 
     CredencialesDePlantilla::comprobar();
 

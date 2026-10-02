@@ -3,6 +3,7 @@
 use App\Casts\EncryptedSeguro;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 /**
  * El cast que guarda cifrados los datos personales sensibles.
@@ -159,4 +160,21 @@ it('funciona como cast de un modelo Eloquent real', function () {
 
     expect($modelo->getAttributes()['dato'])->not->toBe('Calle Larga 123')
         ->and($modelo->dato)->toBe('Calle Larga 123');
+});
+
+it('un dato que no se puede descifrar (clave rotada sin APP_PREVIOUS_KEYS) deja un aviso en el registro, sin el dato', function () {
+    $cast = new EncryptedSeguro;
+    $modelo = modeloDePrueba();
+    $ilegible = 'texto-cifrado-con-otra-clave';
+
+    Log::shouldReceive('warning')
+        ->once()
+        ->withArgs(function (string $mensaje, array $contexto) use ($ilegible): bool {
+            return str_contains($mensaje, 'no se pudo descifrar')
+                && ($contexto['campo'] ?? null) === 'dato'
+                && ! str_contains(json_encode($contexto), $ilegible);
+        });
+
+    // Sigue sin tumbar la pantalla: devuelve lo guardado, ilegible.
+    expect($cast->get($modelo, 'dato', $ilegible, []))->toBe($ilegible);
 });

@@ -15,7 +15,9 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * La IP es la que resuelve Laravel con los proxies de confianza
  * (config/proxies.php): una cabecera X-Forwarded-For escrita por el cliente no
- * la cambia. En producción, sin subred configurada, no deja pasar a nadie.
+ * la cambia. Sin subred configurada solo deja pasar en `local` y `testing`: en
+ * cualquier otro entorno (production, staging, un APP_ENV mal escrito) no deja
+ * pasar a nadie. Falla cerrado.
  */
 final class SoloDesdeLaVpn
 {
@@ -25,7 +27,7 @@ final class SoloDesdeLaVpn
         $subredes = (array) config('panel.vpn_cidr', []);
 
         if ($subredes === []) {
-            abort_if(app()->environment('production'), 404);
+            abort_unless(app()->environment(['local', 'testing']), 404);
 
             return $next($request);
         }
