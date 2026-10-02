@@ -161,7 +161,7 @@ y no se despliega nada (tarea 0.8 detenida).
    `MAIL_MAILER=smtp`, `MAIL_HOST=smtp.resend.com`, `MAIL_PORT=465`, `MAIL_SCHEME=smtps`,
    `MAIL_USERNAME=resend`, `MAIL_PASSWORD=<API key>`, `MAIL_FROM_ADDRESS=no-responder@avisos.<zona>`.
 3. **Turnstile**: crear el widget en Cloudflare (dominio de la landing) y poner
-   `TURNSTILE_SITEKEY`, `TURNSTILE_SECRET` (y `TURNSTILE_HOSTNAME`) en SOPS. Hoy, fuera de
+   `TURNSTILE_SITEKEY`, `TURNSTILE_SECRET` y `TURNSTILE_HOSTNAME` (obligatorio) en SOPS. Hoy, fuera de
    producción, se usan las claves de prueba públicas de Cloudflare; en producción el
    arranque se niega sin claves propias.
 4. **Secretos propios del despliegue** en SOPS → Coolify: `APP_KEY`, `WAITLIST_HASH_SALT`
@@ -177,3 +177,80 @@ y no se despliega nada (tarea 0.8 detenida).
 7. **Umbral de la validación** (spec Q1) y el guion de entrevistas de la tarea 0.9.
 8. Nombre comercial del producto (`APP_NAME`/`SITIO_NOMBRE`, hoy «Recordatorios»).
 9. Verificar a mano la fila de Antártica (12202) del catálogo de comunas.
+
+## Runbook de la tarea 0.8: prerrequisitos, riesgos aceptados y reglas para la V1
+
+Sale de la revisión final de la rama de la fase 0. Nada de esto es código: es lo que
+hay que hacer o saber al desplegar y al empezar la V1.
+
+### Prerrequisitos de 0.8 (antes de abrir la landing al público)
+
+1. **La IP real del visitante tiene que llegar a Laravel, o los límites por IP no sirven.**
+   Detrás de Cloudflare, Caddy ve la IP de Cloudflare, no la del visitante. Si Laravel
+   toma esa IP, todos los visitantes caen en la misma cubeta de `waitlist-ip` (5 por
+   minuto) y `waitlist-token` (30 por minuto): se bloquean entre sí en el primer día y el
+   `ip_hash` guardado es el mismo para todos. En el Caddy que sirve esta app:
+
+   - `trusted_proxies cloudflare` (rangos de Cloudflare como proxies de confianza) y
+     `client_ip_headers CF-Connecting-IP` en las opciones globales de servidor. El origen
+     `cloudflare` de `trusted_proxies` no viene en Caddy de serie: lo da un módulo
+     (`caddy-cloudflare-ip`); verificar que la compilación de Caddy del servidor lo trae
+     y qué versión.
+   - `TRUSTED_PROXIES` de la app acotado a la dirección de Caddy en la red de Docker
+     (`config/proxies.php`). **Nunca `*`**: ver `.ai/rules/proxies-y-limites-por-ip.md`.
+   - **Comprobación en vivo, obligatoria** (no crea datos): desde la red A, pedir 31 veces
+     `GET /lista-de-espera/confirmar/<43 caracteres cualquiera>`; las 30 primeras
+     responden 404 y la 31 responde 429. Inmediatamente después, desde otra red B
+     (datos móviles, otra conexión), la misma URL tiene que responder 404, no 429. Si B
+     también recibe 429, los dos comparten cubeta: no abrir hasta arreglarlo.
+2. **`TURNSTILE_HOSTNAME` es obligatorio en producción** (el arranque se niega sin él):
+   es el dominio donde se resuelve el desafío. Sin él, un token resuelto en otro sitio
+   con la misma clave pasaría.
+3. **El worker de la cola tiene que estar arriba.** El correo de confirmación sale desde
+   un trabajo (`App\Waitlist\EnviarConfirmacionDeLista`) que solo lleva el id de la
+   inscripción; sin worker el formulario responde igual y no sale ningún correo.
+   Comprobarlo con una inscripción real de prueba (tarea 0.8) y mirar `failed_jobs`.
+   Los fallos de este trabajo se purgan a las 24 h desde `maintenance:daily`.
+4. Con `ADMIN_VPN_CIDR` vacío, el panel responde 404 en **todo** entorno que no sea
+   `local` o `testing` (staging incluido): no es un olvido, es el comportamiento seguro.
+
+### Riesgos aceptados
+
+- **Canal lateral de tiempo en el alta (revisión, hallazgo 4).** El cuerpo de la respuesta
+  es idéntico exista o no el correo, pero un alta nueva escribe en la base y encola un
+  trabajo, y un correo ya confirmado o en espera de 24 h responde antes: con mediciones
+  finas de latencia alguien podría distinguir si una dirección ya está inscrita. Se
+  acepta: lo que revela es solo «este correo está o estuvo en la lista», y para medirlo
+  hay que pasar Turnstile, 5 intentos por minuto por IP y un solo intento útil por
+  correo cada 24 h. Si el riesgo deja de ser aceptable: igualar tiempos (encolar siempre
+  y que el trabajo decida) o añadir un retraso aleatorio acotado.
+
+### Rotar `APP_KEY` (revisión, hallazgo 6)
+
+El correo de cada inscripción va cifrado con `APP_KEY` (cast `EncryptedSeguro`). Si se
+rota la clave **sin** `APP_PREVIOUS_KEYS`, nada se pierde en la base pero la lista deja
+de ser legible: el cast devuelve el texto cifrado en vez de tumbar la pantalla (decisión
+del cast, ver su docblock), el trabajo de confirmación falla con destinatario inválido y
+el único rastro es el aviso `EncryptedSeguro: no se pudo descifrar un dato` en el registro
+(modelo y campo, nunca el valor). Procedimiento:
+
+1. Poner la clave **vieja** en `APP_PREVIOUS_KEYS` (varias, separadas por comas) a la vez
+   que se pone la nueva en `APP_KEY`. Laravel descifra con cualquiera de ellas y cifra
+   con la nueva.
+2. Tomar un respaldo antes de rotar y comprobar después que una inscripción se lee.
+3. No quitar la clave vieja de `APP_PREVIOUS_KEYS` hasta haber vuelto a guardar
+   (re-cifrar) todas las filas. La lista de espera es pequeña y de vida corta; si se
+   prefiere, esperar a que se purguen o confirmen las inscripciones antiguas.
+4. `WAITLIST_HASH_SALT` es independiente de `APP_KEY` y **no se rota**: cambiarla
+   invalida todos los `email_hash` (el mismo correo podría inscribirse dos veces).
+
+### Regla obligatoria para la tarea 1.1 (antes de cualquier cuenta pública)
+
+Los usuarios del producto y los administradores del panel **no pueden compartir guard,
+modelo ni tabla**. Hoy `users` es la tabla del panel del dueño (Filament, Shield, MFA).
+Si en 1.1 el registro público crea filas en esa misma tabla y guard, una cuenta de
+vecino queda a un permiso mal asignado de entrar al panel, y las políticas, el
+`Gate::before` del super administrador y el límite de VPN dejan de ser la única línea
+de defensa. En 1.1, **antes** de abrir el registro: guard y proveedor propios para las
+cuentas públicas (modelo y tabla aparte), sin acceso al panel por construcción, y
+pruebas de que una cuenta pública recibe 404 en `/admin` y no puede recibir roles.
