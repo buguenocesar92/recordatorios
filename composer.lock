@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7183efb7e22d049c4cfa3c5f7433ab7f",
+    "content-hash": "47fe2f0fef3624a8f7051c60a0cd9e41",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -2141,72 +2141,6 @@
                 "source": "https://github.com/filamentphp/filament"
             },
             "time": "2026-08-05T20:49:46+00:00"
-        },
-        {
-            "name": "firebase/php-jwt",
-            "version": "v7.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/googleapis/php-jwt.git",
-                "reference": "b374a5d1a4f1f67fadc2165cdb284645945e2fc0"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/googleapis/php-jwt/zipball/b374a5d1a4f1f67fadc2165cdb284645945e2fc0",
-                "reference": "b374a5d1a4f1f67fadc2165cdb284645945e2fc0",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^8.0"
-            },
-            "require-dev": {
-                "guzzlehttp/guzzle": "^7.4",
-                "phpfastcache/phpfastcache": "^9.2",
-                "phpseclib/phpseclib": "~3.0",
-                "phpspec/prophecy-phpunit": "^2.0",
-                "phpunit/phpunit": "^9.5",
-                "psr/cache": "^2.0||^3.0",
-                "psr/http-client": "^1.0",
-                "psr/http-factory": "^1.0"
-            },
-            "suggest": {
-                "ext-sodium": "Support EdDSA (Ed25519) signatures",
-                "paragonie/sodium_compat": "Support EdDSA (Ed25519) signatures when libsodium is not present",
-                "phpseclib/phpseclib": "Support PS256 (RSASSA-PSS) signatures"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Firebase\\JWT\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "BSD-3-Clause"
-            ],
-            "authors": [
-                {
-                    "name": "Neuman Vong",
-                    "email": "neuman+pear@twilio.com",
-                    "role": "Developer"
-                },
-                {
-                    "name": "Anant Narayanan",
-                    "email": "anant@php.net",
-                    "role": "Developer"
-                }
-            ],
-            "description": "A simple library to encode and decode JSON Web Tokens (JWT) in PHP. Should conform to the current spec.",
-            "homepage": "https://github.com/googleapis/php-jwt",
-            "keywords": [
-                "jwt",
-                "php"
-            ],
-            "support": {
-                "issues": "https://github.com/googleapis/php-jwt/issues",
-                "source": "https://github.com/googleapis/php-jwt/tree/v7.1.0"
-            },
-            "time": "2026-06-11T17:54:14+00:00"
         },
         {
             "name": "fruitcake/php-cors",
@@ -4648,156 +4582,6 @@
                 "source": "https://github.com/jmespath/jmespath.php/tree/2.9.2"
             },
             "time": "2026-07-06T18:56:19+00:00"
-        },
-        {
-            "name": "muni-graneros/laravel-muni-shared",
-            "version": "v1.21.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/muni-graneros/laravel-muni-shared.git",
-                "reference": "1d2db9632629eec629ea9f3aa1cd4c09a3c192f3"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/muni-graneros/laravel-muni-shared/zipball/1d2db9632629eec629ea9f3aa1cd4c09a3c192f3",
-                "reference": "1d2db9632629eec629ea9f3aa1cd4c09a3c192f3",
-                "shasum": ""
-            },
-            "require": {
-                "firebase/php-jwt": "^7.1",
-                "illuminate/auth": "^11.0|^12.0|^13.0",
-                "illuminate/bus": "^11.0|^12.0|^13.0",
-                "illuminate/cache": "^11.0|^12.0|^13.0",
-                "illuminate/console": "^11.0|^12.0|^13.0",
-                "illuminate/database": "^11.0|^12.0|^13.0",
-                "illuminate/http": "^11.0|^12.0|^13.0",
-                "illuminate/mail": "^11.0|^12.0|^13.0",
-                "illuminate/queue": "^11.0|^12.0|^13.0",
-                "illuminate/routing": "^11.0|^12.0|^13.0",
-                "illuminate/session": "^11.0|^12.0|^13.0",
-                "illuminate/support": "^11.0|^12.0|^13.0",
-                "laravel/prompts": "^0.1.15|^0.2|^0.3",
-                "php": "^8.3"
-            },
-            "require-dev": {
-                "filament/filament": "^5.0",
-                "larastan/larastan": "^3.11",
-                "laravel/pint": "^1.18",
-                "orchestra/testbench": "^9.0|^10.0|^11.0",
-                "pestphp/pest": "^3.0|^4.0",
-                "spatie/laravel-activitylog": "^4.12",
-                "spatie/laravel-permission": "^7.0"
-            },
-            "suggest": {
-                "filament/filament": "Para Auditoria\\Pages\\ListActivitiesBase y Onboarding\\Pages\\*Base, las páginas base del panel. NO es una dependencia dura: atencionvecino usa este paquete (Privacidad, Persona, Correo) sin Filament (Blade puro) y no debe instalarlo solo por consumir muni-shared.",
-                "spatie/laravel-activitylog": "Para Auditoria\\ActivityPolicy, la política del Resource de auditoría del panel. Mismo motivo que filament/filament: opcional.",
-                "spatie/laravel-permission": "Para Auditoria\\RolePolicy, la política del Resource de roles del panel. Mismo motivo que filament/filament: opcional."
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Muni\\Shared\\MuniSharedServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Muni\\Shared\\": "src/"
-                },
-                "files": [
-                    "src/helpers.php"
-                ]
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Muni\\Shared\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "pest"
-                ],
-                "test:mariadb": [
-                    "tools/pest-mariadb.sh"
-                ]
-            },
-            "license": [
-                "proprietary"
-            ],
-            "description": "Código compartido del ecosistema municipal de Graneros (geocoding, y más adelante resolvers de personas y notificaciones).",
-            "keywords": [
-                "graneros",
-                "laravel",
-                "municipal"
-            ],
-            "time": "2026-09-07T10:41:02+00:00"
-        },
-        {
-            "name": "muni-graneros/laravel-muni-ui",
-            "version": "v0.19.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/muni-graneros/laravel-muni-ui.git",
-                "reference": "436f1c1a598759c4815a8a1debcc5bf5b12c5832"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/muni-graneros/laravel-muni-ui/zipball/436f1c1a598759c4815a8a1debcc5bf5b12c5832",
-                "reference": "436f1c1a598759c4815a8a1debcc5bf5b12c5832",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/support": "^12.0|^13.0",
-                "illuminate/view": "^12.0|^13.0",
-                "php": "^8.3"
-            },
-            "require-dev": {
-                "filament/filament": "^5.0",
-                "larastan/larastan": "^3.10",
-                "laravel/pint": "^1.13",
-                "muni-graneros/laravel-muni-shared": "^1.16",
-                "orchestra/testbench": "^9.0|^10.0|^11.0",
-                "pestphp/pest": "^3.0|^4.0",
-                "pestphp/pest-plugin-livewire": "^3.0|^4.0"
-            },
-            "suggest": {
-                "filament/filament": "Para usar el plugin MuniPanel que viste los paneles con la identidad municipal."
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Muni\\Ui\\MuniUiServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Muni\\Ui\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Muni\\Ui\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "pest"
-                ],
-                "stan": [
-                    "phpstan analyse --memory-limit=1G"
-                ],
-                "lint": [
-                    "pint --test"
-                ]
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Sistema de diseño y componentes Blade del ecosistema municipal de Graneros (tokens oklch, temas dark/light, componentes de panel de datos).",
-            "time": "2026-09-15T12:33:58+00:00"
         },
         {
             "name": "nesbot/carbon",
@@ -12112,69 +11896,6 @@
             "time": "2026-08-19T19:37:52+00:00"
         },
         {
-            "name": "muni-graneros/laravel-muni-candados",
-            "version": "v0.5.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/muni-graneros/laravel-muni-candados.git",
-                "reference": "e8518bdecea4ad77800640711b096da4fc4912b6"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/muni-graneros/laravel-muni-candados/zipball/e8518bdecea4ad77800640711b096da4fc4912b6",
-                "reference": "e8518bdecea4ad77800640711b096da4fc4912b6",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/framework": "^13.0",
-                "pestphp/pest": "^4.0",
-                "php": "^8.4"
-            },
-            "require-dev": {
-                "filament/filament": "^5.0",
-                "larastan/larastan": "^3.0",
-                "laravel/pint": "^1.18",
-                "orchestra/testbench": "^11.0",
-                "phpstan/phpstan": "^2.0"
-            },
-            "suggest": {
-                "filament/filament": "Para que el candado de la cookie de recordar encuentre solo la URL del panel y la de acceso; sin Filament se pasan como parámetros."
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Muni\\Candados\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Muni\\Candados\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "pest"
-                ],
-                "stan": [
-                    "phpstan analyse --memory-limit=1G"
-                ],
-                "post-install-cmd": [
-                    "git config core.hooksPath .githooks || true"
-                ]
-            },
-            "license": [
-                "proprietary"
-            ],
-            "description": "Los candados del ecosistema municipal de Graneros como tests heredables: las reglas que todo sistema tiene que cumplir, escritas una sola vez.",
-            "keywords": [
-                "graneros",
-                "laravel",
-                "municipal",
-                "pest"
-            ],
-            "time": "2026-09-07T13:44:31+00:00"
-        },
-        {
             "name": "myclabs/deep-copy",
             "version": "1.14.0",
             "source": {
@@ -14920,5 +14641,5 @@
         "php": "^8.4"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }

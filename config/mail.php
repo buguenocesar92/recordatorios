@@ -58,10 +58,10 @@ return [
             'timeout' => 15,
         ],
 
-        // El bloque 'graph' lo aporta laravel-muni-shared, que lo fusiona en
-        // mail.mailers.graph desde su propio archivo de configuración. Definirlo
-        // acá también dejaría dos fuentes para lo mismo, y la de este repo
-        // ganaría en silencio.
+        // Sin transporte de Microsoft Graph: este proyecto manda correo por
+        // Resend a través del mailer 'smtp' de arriba (smtp.resend.com:465,
+        // usuario «resend», contraseña = la API key), sin dependencias nuevas.
+        // Ver README, «Pendiente para César».
 
         // Escribe los correos en el log en vez de enviarlos. Para desarrollar.
         // La pantalla de Salud del sistema avisa en rojo si queda puesto en

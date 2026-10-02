@@ -20,7 +20,7 @@
  */
 
 /** El ancla del bloque de árbol en el README: el mismo bloque que pinta `scaffold-laravel-filament-pwa/`. */
-const PATRON_BLOQUE_ARBOL_DEL_README = '/```\nscaffold-laravel-filament-pwa\/\n(.*?)```/us';
+const PATRON_BLOQUE_ARBOL_DEL_README = '/```\n(?:scaffold-laravel-filament-pwa|recordatorios)\/\n(.*?)```/us';
 
 if (! function_exists('nodoDelArbol')) {
     /**

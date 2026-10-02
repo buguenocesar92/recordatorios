@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use App\Policies\RolePolicy;
+use App\Policies\ActivityPolicy;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -10,9 +10,8 @@ use Spatie\Permission\Models\Role;
 /**
  * Toda policy del proyecto niega sin permiso y concede con él.
  *
- * La medición de cobertura las encontró casi sin probar: `SolicitudPolicy` —la
- * que decide quién ve las solicitudes de datos personales de la Ley 21.719—
- * estaba en 0 %, y otras tres en 8 %. Existían porque una regla de arquitectura
+ * La medición de cobertura las encontró casi sin probar: una estaba en 0 % y
+ * otras tres en 8 %. Existían porque una regla de arquitectura
  * las exige, pero nadie comprobaba que hicieran lo correcto.
  *
  * No se comprueba método por método a mano, porque esa lista se desactualiza en
@@ -92,18 +91,20 @@ it('toda policy niega sin permiso y concede con él', function () {
     $policies = collect(glob(app_path('Policies/*.php')))
         ->map(fn (string $ruta): string => 'App\\Policies\\'.basename($ruta, '.php'))
         ->filter(fn (string $clase): bool => class_exists($clase))
-        // RolePolicy es una fachada vacía que EXTIENDE Muni\Shared\Auditoria\RolePolicy
-        // (bezhansalleh/filament-shield la busca por la ruta app/Policies/RolePolicy.php
-        // hardcodeada y no se puede borrar): no declara ningún método ni `can()` propio
-        // —viven en el archivo del paquete—, así que la reflexión de acá, que lee el
-        // ARCHIVO de la clase, no encuentra nada que revisar. Su comportamiento real ya
-        // lo prueba la suite de laravel-muni-shared.
-        ->reject(fn (string $clase): bool => $clase === RolePolicy::class)
         ->values();
+
+    /*
+     * Métodos que niegan SIEMPRE, también con todos los permisos: el historial de
+     * auditoría es de solo lectura (un registro que se puede editar no prueba
+     * nada). Para ellos el paso 2 exige «no» en vez de «sí».
+     */
+    $siempreNiegan = [
+        ActivityPolicy::class => ['create', 'update', 'delete', 'deleteAny'],
+    ];
 
     // Si el glob no encuentra nada, esta prueba pasaría sin comprobar una sola
     // policy. Se exige el número que hay hoy para que no enmudezca en silencio.
-    expect($policies)->toHaveCount(4, 'Cambió la cantidad de policies: revisar esta prueba');
+    expect($policies)->toHaveCount(3, 'Cambió la cantidad de policies: revisar esta prueba');
 
     Role::findOrCreate('super_admin', 'web');
 
@@ -143,6 +144,13 @@ it('toda policy niega sin permiso y concede con él', function () {
         foreach ($metodos as $metodo) {
             $resultado = invocarPolicy($metodo, $policy, $conPermiso);
 
+            if (in_array($metodo->getName(), $siempreNiegan[$clase] ?? [], true)) {
+                expect($resultado)->toBeFalse("{$clase}::{$metodo->getName()}() debe negar siempre");
+                $revisadas++;
+
+                continue;
+            }
+
             expect($resultado)->toBeTrue(
                 "{$clase}::{$metodo->getName()}() negó a un usuario CON el permiso que ella misma exige"
             );
@@ -150,9 +158,7 @@ it('toda policy niega sin permiso y concede con él', function () {
         }
     }
 
-    // Una comprobación que no comprobó nada es peor que ninguna. El umbral bajó de
-    // 80 a 60 al excluir RolePolicy (sus doce métodos aportaban 24 revisiones que
-    // ya no pasan por acá, ver el reject() de arriba); hoy quedan 74 con las cuatro
-    // policies locales que siguen.
-    expect($revisadas)->toBeGreaterThan(60, 'Se revisaron muy pocos métodos: la reflexión no encontró lo que debía');
+    // Una comprobación que no comprobó nada es peor que ninguna. Hoy son 48
+    // revisiones (tres policies: usuarios, roles y auditoría, todas locales).
+    expect($revisadas)->toBeGreaterThanOrEqual(48, 'Se revisaron muy pocos métodos: la reflexión no encontró lo que debía');
 });

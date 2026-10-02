@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Vacía los datos operativos/temporales del sistema (jobs, logs, progresos)
- * conservando lo esencial (usuarios, roles, permisos, tours y pasos de onboarding).
+ * conservando lo esencial (usuarios, roles, permisos).
  *
  *   php artisan env:clean-data              # pide confirmación
  *   php artisan env:clean-data --force      # sin preguntar
@@ -22,10 +22,9 @@ class CleanData extends Command
         {--force : Ejecutar sin confirmación interactiva}
         {--auditoria : Vaciar también el registro de auditoría (activity_log)}';
 
-    protected $description = 'Vacía los datos operativos (jobs, logs de progreso) conservando usuarios, roles/permisos y onboarding.';
+    protected $description = 'Vacía los datos operativos (jobs, logs de progreso) conservando usuarios, roles/permisos.';
 
     private const TABLAS = [
-        'onboarding_progress',
         'jobs',
         'job_batches',
         'failed_jobs',

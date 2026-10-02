@@ -3,15 +3,13 @@
 namespace App\Providers;
 
 use App\Avisos\RegistroDeFuentes;
-use Kraftdo\Shared\Persona\PersonaResolverInterface;
 use App\Http\Middleware\AcotarVidaDeSesion;
 use App\Http\Middleware\SinCacheParaAutenticados;
 use App\Http\Middleware\TwoFactorAuthentication;
 use App\Listeners\RegistrarAcceso;
-use Kraftdo\Shared\Onboarding\OnboardingTour;
 use App\Notifications\Auth\RestablecerContrasenaNotification;
-use App\Privacidad\BuscadorDePersonas;
-use App\Services\PersonaResolver\LocalPersonaResolver;
+use App\Policies\ActivityPolicy;
+use App\Support\CredencialesDePlantilla;
 use App\Support\Sitio\Sitemap;
 use App\Support\VerificadorDeFiltraciones;
 use Filament\Auth\Notifications\ResetPassword as ResetPasswordDelPanel;
@@ -33,9 +31,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Features\SupportFileUploads\FilePreviewController;
 use Livewire\Livewire;
-use Muni\Shared\Auditoria\ActivityPolicy;
-use Muni\Shared\Onboarding\OnboardingTourPolicy;
-use Muni\Shared\Privacidad\Contratos\BuscaTitulares;
 use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
@@ -52,18 +47,6 @@ class AppServiceProvider extends ServiceProvider
         // Un sistema nuevo declara las suyas acá:
         //   $this->app->afterResolving(RegistroDeFuentes::class, fn ($r) => $r->registrar(MisVencimientos::class));
         $this->app->singleton(RegistroDeFuentes::class);
-
-        // Cómo encuentra este sistema a quien viene al mesón a ejercer sus
-        // derechos sobre sus datos. Es lo único del ciclo ARCOP que ningún
-        // paquete puede resolver solo: un sistema que guarde a su gente de otra
-        // forma reemplaza esta clase y no toca nada más.
-        $this->app->bind(BuscaTitulares::class, BuscadorDePersonas::class);
-
-        // Registro del Resolvedor de Personas genérico (desacoplamiento de fuentes de datos)
-        $this->app->bind(
-            PersonaResolverInterface::class,
-            LocalPersonaResolver::class
-        );
 
         // El panel construye SU propia notificación de recuperación de
         // contraseña en vez de llamar a «sendPasswordResetNotification()» del
@@ -91,6 +74,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        CredencialesDePlantilla::comprobar();
+
+        // Lo primero del arranque: si la instalación de producción trae una
+        // credencial publicada en el repositorio (contraseña de la base o de los
+        // respaldos del `.env.example`) o el segundo factor apagado o regalado,
+        // no se arranca. Ver App\Support\CredencialesDePlantilla y su candado
+        // en CandadosDelEcosistemaTest («guardaDeCredencialesDePlantilla»).
+
         // La portada es la primera URL del sitemap; cada módulo público agrega
         // las suyas (ver App\Support\Sitio\Sitemap).
         Sitemap::reiniciar();
@@ -116,12 +107,6 @@ class AppServiceProvider extends ServiceProvider
         // «quién entró», que es otra pregunta y la que hace falta después de un
         // incidente: diez intentos fallidos seguidos contra la misma cuenta no
         // se ven en ninguna otra parte.
-        //
-        // La guarda de que las credenciales del ejemplo no lleguen a producción
-        // (antes App\Support\CredencialesDePlantilla::comprobar() aquí mismo) la
-        // aporta ahora Muni\Shared\Seguridad\CredencialesDePlantilla, enganchada
-        // sola en MuniSharedServiceProvider::boot(): adoptar el paquete alcanza,
-        // sin llamarla desde acá.
 
         // Quién decide si una contraseña ya apareció en una filtración.
         //
@@ -258,13 +243,6 @@ class AppServiceProvider extends ServiceProvider
         // Y un modelo sin policy no queda «sin restricciones»: queda ABIERTO, porque
         // Filament autoriza por defecto cuando no encuentra una.
         Gate::policy(Activity::class, ActivityPolicy::class);
-
-        // Mismo motivo para OnboardingTour: es un modelo LOCAL de este sistema,
-        // así que el auto-discovery de Laravel SÍ probaría
-        // App\Policies\OnboardingTourPolicy por convención — pero esa clase se
-        // borró al adoptar Muni\Shared\Onboarding\OnboardingTourPolicy, y sin
-        // este registro explícito el modelo queda sin policy y abierto.
-        Gate::policy(OnboardingTour::class, OnboardingTourPolicy::class);
 
         // Forzar esquema HTTPS en producción para prevenir alertas de contenido mixto
         if ($this->app->environment('production')) {

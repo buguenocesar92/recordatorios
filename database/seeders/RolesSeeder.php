@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Filament\Pages\Componentes;
 use App\Filament\Pages\Respaldos;
 use App\Models\User;
 use BezhanSalleh\FilamentShield\FilamentShield;
@@ -25,8 +24,6 @@ class RolesSeeder extends Seeder
      * - Respaldos: es la base de datos entera, con todos los datos personales. Quien
      *   la baja tiene que ser quien responde por el sistema, no cualquiera con
      *   acceso al panel (Ley 21.719: minimización y trazabilidad).
-     * - Componentes: catálogo de componentes para quien desarrolla; solo se registra
-     *   en local y testing y no tiene sentido para quien opera el sistema.
      *
      * Criterio para sumar uno nuevo: ¿lo necesita quien administra el panel todos los
      * días (escritorio, diagnóstico en palabras)? Va a `administrator`. ¿Expone datos
@@ -36,7 +33,6 @@ class RolesSeeder extends Seeder
      */
     public const SOLO_SUPER_ADMIN = [
         Respaldos::class,
-        Componentes::class,
     ];
 
     public function run(): void

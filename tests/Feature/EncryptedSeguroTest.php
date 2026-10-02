@@ -1,8 +1,8 @@
 <?php
 
+use App\Casts\EncryptedSeguro;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
-use Muni\Shared\Casts\EncryptedSeguro;
 
 /**
  * El cast que guarda cifrados los datos personales sensibles.
@@ -127,4 +127,36 @@ it('el cifrado usa la clave de la aplicación', function () {
     $guardado = $cast->set(modeloDePrueba(), 'dato', 'Comprobación', []);
 
     expect(Crypt::decryptString((string) $guardado))->toBe('Comprobación');
+});
+
+it('con otra clave de aplicación no se lee el dato: devuelve el valor guardado, no el original', function () {
+    // Si alguien copia la base a otro entorno sin la clave, no debe obtener el
+    // dato en claro. El cast tolera el valor ilegible (no tumba la pantalla) pero
+    // jamás lo «adivina».
+    $cast = new EncryptedSeguro;
+    $modelo = modeloDePrueba();
+    $guardado = (string) $cast->set($modelo, 'dato', 'Dato sensible', []);
+
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    app()->forgetInstance('encrypter');
+    Crypt::clearResolvedInstance('encrypter');
+
+    expect($cast->get($modelo, 'dato', $guardado, []))->not->toBe('Dato sensible');
+});
+
+it('funciona como cast de un modelo Eloquent real', function () {
+    $modelo = new class extends Model
+    {
+        protected $guarded = [];
+
+        protected function casts(): array
+        {
+            return ['dato' => EncryptedSeguro::class];
+        }
+    };
+
+    $modelo->dato = 'Calle Larga 123';
+
+    expect($modelo->getAttributes()['dato'])->not->toBe('Calle Larga 123')
+        ->and($modelo->dato)->toBe('Calle Larga 123');
 });

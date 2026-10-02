@@ -1,6 +1,6 @@
 <?php
 
-use Muni\Shared\Seguridad\CredencialesDePlantilla;
+use App\Support\CredencialesDePlantilla;
 
 /**
  * Lo que no puede terminar dentro de una imagen que se publica.
@@ -118,13 +118,9 @@ it('en desarrollo la contraseña de plantilla no molesta', function () {
     expect(true)->toBeTrue();
 });
 
-// El test «la comprobación está enganchada al arranque, no solo escrita» se retira:
-// desde laravel-muni-shared ^1.19, `Muni\Shared\Seguridad\CredencialesDePlantilla` se
-// engancha sola en `MuniSharedServiceProvider::boot()` —ya no hace falta llamarla desde
-// `AppServiceProvider`, así que grepear ese archivo dejó de probar el enganche real—.
-// Lo que prueba que el candado sigue vivo es que el sistema requiere el paquete y no le
-// apaga el auto-descubrimiento a su proveedor: `Muni\Candados\Candados\GuardaDeCredencialesDePlantilla`,
-// activo en `tests/Feature/CandadosDelEcosistemaTest.php` vía `Candados::guardaDeCredencialesDePlantilla()`.
+// El enganche al arranque (AppServiceProvider::boot() la llama como primera línea)
+// lo vigila CandadosDelEcosistemaTest, bloque «guardaDeCredencialesDePlantilla»,
+// ejecutando boot() de verdad con una credencial de plantilla.
 
 it('la contraseña de plantilla de los respaldos no puede llegar a producción', function () {
     // Los respaldos son la base completa con PII, descargables desde el panel,
@@ -137,10 +133,13 @@ it('la contraseña de plantilla de los respaldos no puede llegar a producción',
     // un respaldo cifrado con ella, se abre con la clave que cualquiera puede
     // buscar en este repositorio.
     $this->app->detectEnvironment(fn (): string => 'production');
+    // La de la base, en regla: si no, el candado salta por ella y esta prueba no
+    // mediría la de los respaldos.
+    config()->set('database.connections.'.config('database.default').'.password', 'una-de-verdad');
     config()->set('backup.backup.password', 'cambiame-por-algo-seguro-en-produccion');
 
     expect(fn () => CredencialesDePlantilla::comprobar())
-        ->toThrow(RuntimeException::class);
+        ->toThrow(RuntimeException::class, 'BACKUP_ARCHIVE_PASSWORD');
 });
 
 it('en desarrollo la contraseña de plantilla de los respaldos no molesta', function () {
@@ -184,6 +183,10 @@ it('el candado no tumba el build de la imagen', function () {
     $this->app->detectEnvironment(fn (): string => 'production');
     config()->set('database.connections.'.config('database.default').'.password', '');
     config()->set('backup.backup.password', '');
+    // Sin .env, config/mfa.php cae en sus valores por omisión: encendido y sin
+    // mostrar el código. Se fijan así para no depender del .env de quien prueba.
+    config()->set('mfa.enabled', true);
+    config()->set('mfa.show_code', false);
 
     CredencialesDePlantilla::comprobar();
 

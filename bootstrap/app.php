@@ -7,12 +7,12 @@ use App\Http\Middleware\NoncePorPeticion;
 use App\Http\Middleware\SinCacheCompartidaConCookies;
 use App\Http\Middleware\SinCacheParaAutenticados;
 use App\Http\Middleware\TwoFactorAuthentication;
+use App\Support\ReporteDeErrores;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Support\Facades\Route;
-use Muni\Shared\Errores\ReporteDeErrores;
 use Sentry\Laravel\Integration;
 use Spatie\Csp\AddCspHeaders;
 

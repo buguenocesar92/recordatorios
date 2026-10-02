@@ -19,21 +19,8 @@ test-results
 .github
 
 # Dependencias que el propio Dockerfile reinstala dentro de la imagen
-vendor/*
-!vendor/muni-graneros
-vendor/muni-graneros/*
-!vendor/muni-graneros/laravel-muni-ui
-vendor/muni-graneros/laravel-muni-ui/*
-!vendor/muni-graneros/laravel-muni-ui/resources
+vendor
 node_modules
-
-# Excepción: la hoja de estilos del paquete de diseño. La etapa que compila los
-# assets corre antes de que exista vendor —lo instala composer más adelante, en
-# otra etapa— y auth.css la importa.
-#
-# Hay que abrir el camino nivel por nivel: Docker no reincluye una subruta si su
-# directorio padre quedó excluido, y con un solo «!» el build falla al calcular
-# la huella del COPY, sin decir cuál es el archivo que falta.
 
 # Artefactos locales que no aportan nada dentro del contenedor
 storage/logs

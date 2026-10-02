@@ -1,6 +1,5 @@
 <?php
 
-use App\Filament\Pages\Componentes;
 use App\Filament\Pages\Respaldos;
 use App\Filament\Pages\SaludDelSistema;
 use BezhanSalleh\FilamentShield\FilamentShield;
@@ -88,14 +87,14 @@ it('lo declarado solo-super_admin existe y de verdad no lo tiene ningún otro ro
     }
 });
 
-it('el administrador ve el diagnóstico y los widgets del escritorio, pero no los respaldos ni el catálogo de componentes', function () {
+it('el administrador ve el diagnóstico y los widgets del escritorio, pero no los respaldos', function () {
     $admin = Role::findByName('administrator', 'web');
     $permisos = permisosPorClaseDePaginasYWidgets();
 
     foreach ($permisos[SaludDelSistema::class] as $permiso) {
         expect($admin->hasPermissionTo($permiso))->toBeTrue();
     }
-    foreach ([Respaldos::class, Componentes::class] as $clase) {
+    foreach ([Respaldos::class] as $clase) {
         foreach ($permisos[$clase] as $permiso) {
             expect($admin->hasPermissionTo($permiso))->toBeFalse("«{$permiso}» no es para administrator");
         }

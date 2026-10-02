@@ -1,6 +1,5 @@
 <?php
 
-use Kraftdo\Shared\Onboarding\OnboardingTour;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -150,13 +149,11 @@ it('el administrador puede con todo, y eso viene del rol, no de la policy', func
  * La medición las encontró en 8 %: se comprobaba que existieran —hay una regla
  * de arquitectura para eso— pero no que negaran a quien no debe pasar. Son las
  * que deciden quién ve la auditoría del sistema, quién administra los roles
- * —o sea, quién puede darse permisos a sí mismo— y quién toca los recorridos
- * guiados.
+ * —o sea, quién puede darse permisos a sí mismo—.
  */
 dataset('policies del panel', [
     'auditoría' => [Activity::class, 'activity'],
     'roles' => [Role::class, 'role'],
-    'recorridos guiados' => [OnboardingTour::class, 'onboarding_tour'],
 ]);
 
 it('sin permiso, ninguna policy del panel deja pasar', function (string $modelo, string $sufijo) {
@@ -177,7 +174,7 @@ it('con permiso, cada policy del panel deja pasar', function (string $modelo, st
             "«{$accion}» sobre {$modelo} se negó a quien tiene «{$prefijo}{$sufijo}»",
         );
     }
-})->with('policies del panel');
+})->with(['roles' => [Role::class, 'role']]);
 
 it('administrar roles es la llave del panel entero, y exige su propio permiso', function () {
     // Quien administra roles puede darse cualquier permiso a sí mismo. Que ese
@@ -189,4 +186,20 @@ it('administrar roles es la llave del panel entero, y exige su propio permiso', 
         ->and(Gate::forUser($editor)->allows('create', Role::class))->toBeFalse()
         // «update» pide el registro, no la clase: ver «sujeto()».
         ->and(Gate::forUser($editor)->allows('update', new Role))->toBeFalse();
+});
+
+it('la auditoría se puede mirar con permiso, pero nadie la escribe ni la borra', function () {
+    // Un registro de auditoría que se puede editar no prueba nada: ni con los
+    // permisos de escritura que Shield pudiera generar se concede.
+    $lector = usuarioCon('view_any_activity');
+
+    expect(Gate::forUser($lector)->allows('viewAny', Activity::class))->toBeTrue();
+
+    foreach (['create' => 'create_activity', 'update' => 'update_activity', 'delete' => 'delete_activity'] as $accion => $permiso) {
+        $conTodo = usuarioCon($permiso);
+
+        expect(Gate::forUser($conTodo)->allows($accion, sujeto(Activity::class, $accion)))->toBeFalse(
+            "«{$accion}» sobre la auditoría se permitió con «{$permiso}»",
+        );
+    }
 });

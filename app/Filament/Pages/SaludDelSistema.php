@@ -9,7 +9,6 @@ use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Muni\Shared\Correo\ConfiguracionDeCorreo;
 
 /**
  * Diagnóstico del sistema, en palabras.
@@ -54,70 +53,6 @@ class SaludDelSistema extends Page
             $this->almacenamiento(),
             $this->imagenes(),
             $this->correoDelSegundoFactor(),
-            $this->vencimientoDelSecreto(),
-        ];
-    }
-
-    /**
-     * Cuánto le queda al secreto de la aplicación que manda los correos.
-     *
-     * El día que vence, el sitio deja de mandar el código del segundo factor y
-     * nadie puede entrar al panel. Microsoft no avisa antes, así que el aviso
-     * tiene que salir de acá.
-     *
-     * @return array{nombre: string, estado: string, detalle: string}
-     */
-    private function vencimientoDelSecreto(): array
-    {
-        // El paquete compartido puede no estar, o estar en una versión anterior
-        // a la que trajo esta clase: un sistema suelto generado por el scaffold
-        // no tiene por qué mandar correo por Microsoft Graph. Sin la clase, la
-        // revisión no aplica en vez de reventar la pantalla entera.
-        if (! class_exists(ConfiguracionDeCorreo::class)) {
-            return [
-                'nombre' => 'Permiso para enviar correo',
-                'estado' => 'bien',
-                'detalle' => 'No aplica: este sistema no manda correo por Microsoft Graph.',
-            ];
-        }
-
-        if (ConfiguracionDeCorreo::modoActual() !== 'graph') {
-            return [
-                'nombre' => 'Permiso para enviar correo',
-                'estado' => 'bien',
-                'detalle' => 'No aplica: el correo no se manda por Microsoft Graph.',
-            ];
-        }
-
-        $dias = ConfiguracionDeCorreo::diasHastaElVencimiento();
-
-        if ($dias === null) {
-            return [
-                'nombre' => 'Permiso para enviar correo',
-                'estado' => 'atención',
-                'detalle' => 'No está anotada la fecha en que vence el permiso, o no se entiende. '
-                    .'El día que venza, nadie va a poder entrar al panel y no habrá aviso previo. '
-                    .'Se anota en MICROSOFT_GRAPH_SECRET_VENCE con el formato AAAA-MM-DD.',
-            ];
-        }
-
-        if ($dias < 0) {
-            return [
-                'nombre' => 'Permiso para enviar correo',
-                'estado' => 'mal',
-                'detalle' => 'Venció hace '.abs($dias).' días. El sitio no puede mandar correo '
-                    .'y nadie nuevo puede entrar al panel. Hay que pedirle a informática un secreto nuevo. '
-                    .'Mientras tanto: php artisan panel:codigo-de-rescate',
-            ];
-        }
-
-        return [
-            'nombre' => 'Permiso para enviar correo',
-            'estado' => $dias <= 30 ? 'atención' : 'bien',
-            'detalle' => $dias <= 30
-                ? "Vence en {$dias} días. Conviene pedir el reemplazo antes: el día que venza, "
-                    .'nadie va a poder entrar al panel.'
-                : "Vence en {$dias} días.",
         ];
     }
 
@@ -335,41 +270,10 @@ class SaludDelSistema extends Page
             ];
         }
 
-        // El canal está bien, pero eso solo significa que se INTENTA enviar. Que
-        // el envío llegue a alguna parte depende de que el remitente y el
-        // destinatario sean del dominio que el relay acepta, cosa que no se nota
-        // hasta que alguien no puede entrar.
-        //
-        // Esa comprobación fina la sabe hacer el paquete compartido. Si no está
-        // —un sistema suelto generado por el scaffold no tiene por qué tenerlo—
-        // se dice lo que sí se puede afirmar: que el canal está configurado.
-        if (! class_exists(ConfiguracionDeCorreo::class)) {
-            return [
-                'nombre' => 'Código del segundo factor',
-                'estado' => 'bien',
-                'detalle' => 'El correo sale por «'.$canal.'». Conviene comprobar que llega de verdad: php artisan correo:probar',
-            ];
-        }
-
-        $usuario = config('mail.mailers.smtp.username');
-
-        $problemas = ConfiguracionDeCorreo::problemas(
-            ConfiguracionDeCorreo::modoDeEnvio($canal, is_string($usuario) ? $usuario : null),
-            (string) config('mail.from.address'),
-        );
-
-        if ($problemas !== []) {
-            return [
-                'nombre' => 'Código del segundo factor',
-                'estado' => 'mal',
-                'detalle' => $problemas[0].' Revisar con: php artisan correo:probar',
-            ];
-        }
-
         return [
             'nombre' => 'Código del segundo factor',
             'estado' => 'bien',
-            'detalle' => 'Se envía por correo y no queda guardado en ninguna parte.',
+            'detalle' => 'El correo sale por «'.$canal.'». Conviene comprobar que llega de verdad con un envío de prueba.',
         ];
     }
 }

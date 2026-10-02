@@ -29,9 +29,8 @@ COPY composer.json composer.lock ./
 # y env sí dejan grabados). El runner de despliegue ya tiene COMPOSER_GH_TOKEN
 # (ver .github/workflows/desplegar.yml, que lo pasa como secreto de build, el
 # mismo token que ya usa ci.yml). Este scaffold, sin ese secreto, construye
-# igual: `muni-graneros/laravel-muni-shared` y `muni-graneros/laravel-muni-ui`
-# son repositorios PÚBLICOS (composer.json los exige siempre, ver README.md);
-# el secreto solo hace falta para un paquete privado real —`--shared=kraftdo`—,
+# igual: este proyecto no depende de ningún paquete privado (ver README.md,
+# «Decisión de origen»); el secreto solo haría falta si alguna vez se agrega uno,
 # y sin él ese `composer install` simplemente no lo resuelve, en vez de dejar
 # un token corriendo en el entorno de un contenedor de producción como root
 # con acceso a internet.
@@ -118,7 +117,7 @@ COPY package.json package-lock.json ./
 # importa `resources/js/bootstrap.js`, que entra al bundle de `app.js`) tienen
 # que estar en `dependencies`, no en `devDependencies` como es costumbre en un
 # Laravel recién generado: acá esa división decide qué entra a la imagen de
-# producción. El candado `Muni\Candados\Candados::higieneDeLaEtapaDeAssets()`
+# producción. El candado `higieneDeLaEtapaDeAssets`
 # (`tests/Feature/CandadosDelEcosistemaTest.php`) falla si alguien vuelve a
 # mover alguno de vuelta o a soltar el `npm ci` a secas.
 RUN npm ci --omit=dev --ignore-scripts

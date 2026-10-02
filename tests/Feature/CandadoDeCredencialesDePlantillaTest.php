@@ -1,6 +1,6 @@
 <?php
 
-use Muni\Shared\Seguridad\CredencialesDePlantilla;
+use App\Support\CredencialesDePlantilla;
 
 /**
  * El candado que impide que la contraseña del «.env.example» llegue a producción
@@ -36,6 +36,43 @@ it('fuera de producción no se mete', function () {
     config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     config()->set('database.default', 'mariadb');
     config()->set('database.connections.mariadb.password', 'sistema_pass');
+
+    CredencialesDePlantilla::comprobar();
+})->throwsNoExceptions();
+
+it('en producción no arranca con el segundo factor apagado', function (mixed $valor) {
+    app()['env'] = 'production';
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('database.default', 'mariadb');
+    config()->set('database.connections.mariadb.password', 'una-de-verdad');
+    config()->set('backup.backup.password', '');
+    config()->set('mfa.enabled', $valor);
+    config()->set('mfa.show_code', false);
+
+    CredencialesDePlantilla::comprobar();
+})->with(['false' => false, 'vacío' => '', 'nulo' => null])
+    ->throws(RuntimeException::class, 'segundo factor está apagado');
+
+it('en producción no arranca con el código del segundo factor en pantalla', function () {
+    app()['env'] = 'production';
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('database.default', 'mariadb');
+    config()->set('database.connections.mariadb.password', 'una-de-verdad');
+    config()->set('backup.backup.password', '');
+    config()->set('mfa.enabled', true);
+    config()->set('mfa.show_code', true);
+
+    CredencialesDePlantilla::comprobar();
+})->throws(RuntimeException::class, 'se muestra en pantalla');
+
+it('en producción, con todo en orden, arranca', function () {
+    app()['env'] = 'production';
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('database.default', 'mariadb');
+    config()->set('database.connections.mariadb.password', 'una-de-verdad');
+    config()->set('backup.backup.password', 'otra-de-verdad');
+    config()->set('mfa.enabled', true);
+    config()->set('mfa.show_code', false);
 
     CredencialesDePlantilla::comprobar();
 })->throwsNoExceptions();

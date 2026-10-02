@@ -76,21 +76,6 @@ e2e: ## Ejecuta las pruebas E2E de Playwright
 manual: ## Regenera capturas + manual (Playwright)
 	cd e2e && npm run manual
 
-## ── Videos Tutorial (demo-engine) ──────────────────────────────────────────────
-demo-preparar: ## Prepara sesiones autenticadas para grabar (demo-engine)
-	npx demo preparar
-
-demo-grabar: ## Graba un guión: make demo-grabar guion=recorrido
-	@test -n "$(guion)" || { echo "Uso: make demo-grabar guion=recorrido"; exit 1; }
-	npx demo grabar $(guion)
-
-demo-curso: ## Graba y monta el curso completo (demo-engine)
-	npx demo curso
-
-demo-auditar: ## Audita un video para detectar fugas de privacidad
-	@test -n "$(video)" || { echo "Uso: make demo-auditar video=recorrido"; exit 1; }
-	npx demo auditar $(video)
-
 pint: ## Formatea el código con Pint
 	$(EXEC) ./vendor/bin/pint
 
@@ -111,10 +96,6 @@ new: ## Genera un proyecto: make new name="Mi Sistema" shared=muni [frontend=…
 	@test -n "$(shared)" || { echo "Falta shared: hay que decir a qué entidad pertenece el proyecto. Uso: make new name=\"$(name)\" shared=muni  (o shared=kraftdo)"; exit 1; }
 	./scaffold new "$(name)" --shared=$(shared) $(if $(frontend),--frontend=$(frontend),) $(if $(port),--port=$(port),)
 
-demo-engine-update: ## Sube el pin de demo-engine al tag indicado (uso: make demo-engine-update V=v1.12.0)
-	@test -n "$(V)" || { echo "Falta V. Uso: make demo-engine-update V=v1.12.0"; exit 1; }
-	sed -i "s#tags/v[^/]*\.tar\.gz#tags/$(V).tar.gz#" package.json
-	@echo "Pin de demo-engine -> $(V). Corre npm install para aplicar."
 cobertura: ## Mide qué parte del código tocan las pruebas (necesita pcov)
 	@# Base de datos PROPIA, distinta de la de «make test».
 	@#

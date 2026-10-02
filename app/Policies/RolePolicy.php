@@ -4,22 +4,48 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use Muni\Shared\Auditoria\RolePolicy as RolePolicyCompartida;
+use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 /**
- * Fachada vacía: NO borrar este archivo.
+ * NO borrar este archivo: `bezhansalleh/filament-shield` busca la policy del
+ * Resource de Roles en la ruta `app/Policies/RolePolicy.php` hardcodeada. Sin
+ * ella el Resource queda sin policy y Filament autoriza TODO.
  *
- * `bezhansalleh/filament-shield` registra la policy del Resource de Roles con
- * la ruta `App\Policies\RolePolicy` HARDCODEADA (ver
- * `Utils::getRolePolicyPath()`/`isRolePolicyRegistered()`), y solo si el
- * archivo existe en disco en `app/Policies/RolePolicy.php` — la resuelve por
- * el mapeo PSR-4 de esa ruta, no por el namespace que declare el archivo. Si
- * este archivo se borra, Shield deja de registrar la policy del todo y el
- * Resource de Roles queda sin ninguna: Filament autoriza TODO cuando un
- * recurso no tiene policy, así que borrar esto sería peor que la duplicación
- * que venía a resolver.
- *
- * El comportamiento real vive en `Muni\Shared\Auditoria\RolePolicy` (delega
- * en los permisos que Shield genera, sin hardcodear ningún rol).
+ * Delega en los permisos que Shield genera para el recurso de roles, sin
+ * hardcodear ningún rol.
  */
-class RolePolicy extends RolePolicyCompartida {}
+class RolePolicy
+{
+    use HandlesAuthorization;
+
+    public function viewAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('view_any_role');
+    }
+
+    public function view(AuthUser $authUser): bool
+    {
+        return $authUser->can('view_role');
+    }
+
+    public function create(AuthUser $authUser): bool
+    {
+        return $authUser->can('create_role');
+    }
+
+    public function update(AuthUser $authUser): bool
+    {
+        return $authUser->can('update_role');
+    }
+
+    public function delete(AuthUser $authUser): bool
+    {
+        return $authUser->can('delete_role');
+    }
+
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('delete_any_role');
+    }
+}

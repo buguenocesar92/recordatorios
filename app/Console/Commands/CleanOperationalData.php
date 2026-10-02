@@ -7,7 +7,7 @@ use Illuminate\Console\ConfirmableTrait;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Vacía los DATOS operativos del sistema dejando intacto la configuración y el onboarding.
+ * Vacía los DATOS operativos del sistema dejando intacta la configuración.
  */
 class CleanOperationalData extends Command
 {

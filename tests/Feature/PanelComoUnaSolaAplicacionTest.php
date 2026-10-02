@@ -8,11 +8,8 @@ use Spatie\Permission\Models\Role;
 /**
  * El panel se comporta como una sola aplicación.
  *
- * Tres cosas que cambian cómo se siente usarlo todos los días, y una que estaba
- * rota: el botón de ayuda llamaba a «startAdminTour()», que no existe en ningún
- * archivo de este repo —la API real es «window.Onboarding.replay()»—, así que
- * al hacer clic solo dejaba un error en la consola. Y su icono era de Font
- * Awesome, que este panel no carga: quedaba un hueco al lado del texto.
+ * Cosas que cambian cómo se siente usarlo todos los días. (El botón de ayuda del
+ * recorrido guiado se fue con el módulo de recorridos, que este sistema no trae.)
  */
 uses(RefreshDatabase::class);
 
@@ -25,25 +22,13 @@ beforeEach(function () {
     $this->actingAs($this->jefe);
 });
 
-it('el botón de ayuda llama a una función que existe', function () {
-    $this->get(Escritorio::getUrl())
-        ->assertOk()
-        ->assertDontSee('startAdminTour', escape: false)
-        ->assertSee('Onboarding', escape: false);
-});
-
-it('el botón de ayuda no usa un icono que el panel no carga', function () {
-    $this->get(Escritorio::getUrl())
-        ->assertOk()
-        ->assertDontSee('fa-solid', escape: false);
-});
-
-it('el botón de ayuda no lleva JavaScript en línea', function () {
+it('el panel no lleva JavaScript en línea', function () {
     // Con «onclick» no se puede adoptar una política de contenido estricta sin
     // abrir la puerta a todo el JavaScript en línea de la página.
     $this->get(Escritorio::getUrl())
         ->assertOk()
-        ->assertDontSee('onclick=', escape: false);
+        ->assertDontSee('onclick=', escape: false)
+        ->assertDontSee('fa-solid', escape: false);
 });
 
 it('cambiar de sección no recarga la página entera', function () {

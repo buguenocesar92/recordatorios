@@ -19,6 +19,13 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
+    /**
+     * Supresión (Ley 21.719): la cuenta de quien opera el panel se elimina
+     * entera desde el recurso de usuarios (borrado físico, sin soft delete).
+     * El historial de auditoría conserva el evento, no la cuenta.
+     */
+    public const SUPRESION_POR_BORRADO = true;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, LogsActivity, Notifiable {
         // La clase redefine «roles()» más abajo para añadirle un pivote

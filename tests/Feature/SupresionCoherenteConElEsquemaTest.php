@@ -93,18 +93,33 @@ it('ninguna supresión anula una columna declarada obligatoria', function () {
      * compartido todavía no publica ese contrato: filtrar por la interfaz no
      * encontraría nada justo en esos proyectos.
      */
-    $modelos = collect(glob(app_path('Models/*.php')) ?: [])
-        ->filter(function (string $archivo): bool {
-            $codigo = (string) file_get_contents($archivo);
+    $todos = collect(glob(app_path('Models/*.php')) ?: []);
 
-            return str_contains($codigo, 'function purgarDatosSensibles(')
-                || str_contains($codigo, 'function anonimizar(');
-        });
+    expect($todos)->not->toBeEmpty('No encontré modelos: la lectura de app/Models dejó de funcionar');
 
-    expect($modelos)->not->toBeEmpty(
-        'Ningún modelo sabe suprimir datos personales: si el proyecto guarda datos de '.
-        'personas, el derecho de supresión de la Ley 21.719 no está implementado'
-    );
+    /*
+     * Cada modelo declara CÓMO se suprimen sus datos personales: o anonimiza
+     * (método purgarDatosSensibles()/anonimizar()) o se borra la fila entera
+     * (constante SUPRESION_POR_BORRADO, con su motivo en el docblock). Un modelo
+     * nuevo que no diga ninguna de las dos cosas rompe esta prueba: el derecho
+     * de supresión de la Ley 21.719 no puede quedar sin camino.
+     */
+    foreach ($todos as $archivo) {
+        $codigo = (string) file_get_contents($archivo);
+
+        expect(
+            str_contains($codigo, 'function purgarDatosSensibles(')
+            || str_contains($codigo, 'function anonimizar(')
+            || str_contains($codigo, 'const SUPRESION_POR_BORRADO = true;')
+        )->toBeTrue(basename($archivo).' no declara cómo se suprimen sus datos personales');
+    }
+
+    $modelos = $todos->filter(function (string $archivo): bool {
+        $codigo = (string) file_get_contents($archivo);
+
+        return str_contains($codigo, 'function purgarDatosSensibles(')
+            || str_contains($codigo, 'function anonimizar(');
+    });
 
     $declaradas = columnasDeclaradas();
     $revisados = 0;
@@ -131,8 +146,10 @@ it('ninguna supresión anula una columna declarada obligatoria', function () {
         }
     }
 
-    expect($revisados)->toBeGreaterThan(0,
-        'No se pudo juzgar ni un solo campo: o la lectura del código dejó de encontrarlos, '.
-        'o ninguna columna que se anula la declara una migración de este proyecto'
-    );
+    if ($modelos->isNotEmpty()) {
+        expect($revisados)->toBeGreaterThan(0,
+            'No se pudo juzgar ni un solo campo: o la lectura del código dejó de encontrarlos, '.
+            'o ninguna columna que se anula la declara una migración de este proyecto'
+        );
+    }
 });

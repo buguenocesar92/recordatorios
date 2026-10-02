@@ -1,7 +1,7 @@
 <?php
 
-use Kraftdo\Shared\Onboarding\OnboardingTour;
 use App\Models\User;
+use App\Support\Rutas\MiddlewareDeApi;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +18,8 @@ use Spatie\Permission\Models\Role;
  * contraseña. Filament declara `AuthenticateSession` a mano en el panel, así que
  * `/admin` sí se cerraba; el grupo «web» no lo llevaba, y todo lo autenticado que
  * vive fuera del panel —hoy «/verificar-mfa» y `routes/api.php`, que va con
- * ['web','auth','mfa']— seguía abierto con la contraseña vieja.
+ * MiddlewareDeApi::AUTENTICADA— seguía abierto con la contraseña vieja. El MVP
+ * todavía no expone API: se prueba con una ruta sonda que usa esa misma pila.
  *
  * El daño no es teórico: el operador cree haber revocado el acceso y sigue
  * pudiéndose leer y escribir por esas rutas. Y este repositorio es el MOLDE del
@@ -38,13 +39,10 @@ beforeEach(function () {
     // El hash con el que quedó atada la sesión robada.
     $this->hashViejo = $this->usuario->getAuthPassword();
 
-    OnboardingTour::create([
-        'name' => 'Tour del panel',
-        'system' => 'admin',
-        'role' => 'operador',
-        'surface' => 'panel',
-        'active' => true,
-    ]);
+    Route::middleware(MiddlewareDeApi::AUTENTICADA)
+        ->get('api/sonda-sesion', fn () => response()->json(['ok' => true]))
+        ->name('sonda.api');
+    Route::getRoutes()->refreshNameLookups();
 });
 
 /** Lo que hace el operador al enterarse del incidente. */
@@ -70,7 +68,7 @@ it('cierra las rutas de api cuando la contraseña ya se rotó', function () {
             'password_hash_web' => $this->hashViejo,
             'auth.two_factor_verified' => true,
         ])
-        ->getJson(route('onboarding.tour', ['system' => 'admin', 'surface' => 'panel']))
+        ->getJson(route('sonda.api'))
         ->assertUnauthorized();
 });
 
@@ -80,7 +78,7 @@ it('no molesta a la sesión legítima, que sigue atada al hash vigente', functio
             'password_hash_web' => $this->hashViejo,
             'auth.two_factor_verified' => true,
         ])
-        ->getJson(route('onboarding.tour', ['system' => 'admin', 'surface' => 'panel']))
+        ->getJson(route('sonda.api'))
         ->assertOk();
 });
 
@@ -89,7 +87,7 @@ it('el primer ingreso no necesita traer el hash en la sesión', function () {
     // middleware la adopta en vez de cerrarla, o nadie podría entrar nunca.
     $this->actingAs($this->usuario)
         ->withSession(['auth.two_factor_verified' => true])
-        ->getJson(route('onboarding.tour', ['system' => 'admin', 'surface' => 'panel']))
+        ->getJson(route('sonda.api'))
         ->assertOk();
 });
 

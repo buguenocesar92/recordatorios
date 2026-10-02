@@ -10,12 +10,12 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Aprovisiona/actualiza el entorno: regenera los permisos de Shield para el panel admin,
- * siembra roles y onboarding, y crea o promueve al super administrador.
+ * siembra roles, y crea o promueve al super administrador.
  *
  *   php artisan env:provision \
  *       --admin-email=admin@example.com --admin-name="Admin" --admin-password=...
  *
- * Sin `--admin-*` solo hace Shield + roles + onboarding.
+ * Sin `--admin-*` solo hace Shield + roles.
  */
 class ProvisionEnvironment extends Command
 {
@@ -26,7 +26,7 @@ class ProvisionEnvironment extends Command
         {--reset-password : Fijar la contraseña aunque la cuenta ya exista}
         {--skip-shield : No regenerar los permisos de Shield}';
 
-    protected $description = 'Provisiona el entorno: permisos Shield + roles + onboarding + super admin (idempotente).';
+    protected $description = 'Provisiona el entorno: permisos Shield + roles + super admin (idempotente).';
 
     public function handle(): int
     {
@@ -47,9 +47,8 @@ class ProvisionEnvironment extends Command
             ], $this->getOutput());
         }
 
-        $this->info('🌱 Sembrando roles/permisos y onboarding...');
+        $this->info('🌱 Sembrando roles/permisos...');
         Artisan::call('db:seed', ['--class' => 'RolesSeeder', '--force' => true], $this->getOutput());
-        Artisan::call('db:seed', ['--class' => 'OnboardingToursSeeder', '--force' => true], $this->getOutput());
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 

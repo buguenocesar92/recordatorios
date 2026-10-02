@@ -1,9 +1,10 @@
 <?php
 
 use App\Http\Middleware\SinCacheParaAutenticados;
-use Kraftdo\Shared\Onboarding\OnboardingTour;
 use App\Models\User;
+use App\Support\Rutas\MiddlewareDeApi;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -49,13 +50,10 @@ beforeEach(function () {
     $this->usuario = User::factory()->create();
     $this->usuario->assignRole($this->rolConAcceso);
 
-    OnboardingTour::create([
-        'name' => 'Tour del panel',
-        'system' => 'admin',
-        'role' => 'administrator',
-        'surface' => 'panel',
-        'active' => true,
-    ]);
+    Route::middleware(MiddlewareDeApi::AUTENTICADA)
+        ->get('api/sonda-cache', fn () => response()->json(['ok' => true]))
+        ->name('sonda.api');
+    Route::getRoutes()->refreshNameLookups();
 });
 
 it('el panel se sirve con no-store', function () {
@@ -78,7 +76,7 @@ it('la pantalla del segundo factor se sirve con no-store', function () {
 it('las rutas de api se sirven con no-store', function () {
     $respuesta = $this->actingAs($this->usuario)
         ->withSession(['auth.two_factor_verified' => true])
-        ->getJson(route('onboarding.tour', ['system' => 'admin', 'surface' => 'panel']))
+        ->getJson(route('sonda.api'))
         ->assertOk();
 
     expect($respuesta->headers->get('Cache-Control'))->toContain('no-store');

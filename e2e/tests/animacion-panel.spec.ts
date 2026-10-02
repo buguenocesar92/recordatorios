@@ -80,7 +80,7 @@ test.describe('panel', () => {
 
         /*
          * Las dos cosas, y por separado. El color, el radio y la sombra en
-         * reposo los define el tema de laravel-muni-ui y los marca «!important»:
+         * reposo los define el tema compartido del panel y los marca «!important»:
          * la primera versión de esta hoja los repetía y no se aplicaba ninguna,
          * pero la tarjeta igual se movía — o sea que comprobar solo el
          * desplazamiento daba verde con la sombra rota.

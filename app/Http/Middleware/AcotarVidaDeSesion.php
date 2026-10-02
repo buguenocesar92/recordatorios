@@ -21,9 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  * cambiaba, para cortar una cookie robada. En la práctica cerraba la sesión de
  * quien salía del wifi de la oficina y quedaba en datos móviles —justo ese
  * caso es «otra red»—, y como este middleware es persistente en Livewire, la
- * botaba a media pantalla. Se decidió el 2026-09-09 (spec de
- * discapacidad-graneros:
- * `docs/superpowers/specs/2026-09-09-aflojar-candados-de-acceso-design.md`).
+ * botaba a media pantalla. Se decidió el 2026-09-09 en el scaffold del que
+ * nace este proyecto.
  *
  * Riesgo aceptado, escrito: una cookie robada sirve hasta que venza la sesión
  * (inactividad de dos horas o estas doce absolutas), igual que en cualquier

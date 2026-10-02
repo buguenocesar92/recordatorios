@@ -11,7 +11,6 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/css/sitio.css',
                 'resources/js/app.js',
-                'resources/js/tour.js',
                 'resources/js/panel.js',
             ],
             refresh: true,
