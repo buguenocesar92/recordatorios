@@ -476,3 +476,93 @@
 html.dark {
     --muni-muted: #a3b1c4;
 }
+
+/* ── Página «Métricas» de la lista de espera ─────────────────────────────
+ * El panel no compila las utilidades de Tailwind de las vistas propias (carga
+ * el CSS de Filament y esta hoja), así que la página usa clases propias.
+ * Colores desde las variables de Filament (oklch completas): contrastan en los
+ * dos modos porque son las mismas del resto del panel. */
+.rd-metricas-indicadores {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+
+.rd-metricas-nombre {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-600);
+}
+
+.rd-metricas-valor {
+    margin-top: 0.25rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--gray-950);
+}
+
+.rd-metricas-ayuda {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--gray-600);
+}
+
+.dark .rd-metricas-nombre,
+.dark .rd-metricas-ayuda {
+    color: var(--gray-400);
+}
+
+.dark .rd-metricas-valor {
+    color: #fff;
+}
+
+.rd-metricas-tabla {
+    width: 100%;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    border-collapse: collapse;
+}
+
+.rd-metricas-tabla th {
+    padding: 0.25rem 1rem 0.25rem 0;
+    text-align: left;
+    font-weight: 500;
+    color: var(--gray-600);
+}
+
+.rd-metricas-tabla td {
+    padding: 0.25rem 1rem 0.25rem 0;
+    border-top: 1px solid var(--gray-200);
+}
+
+.dark .rd-metricas-tabla th {
+    color: var(--gray-400);
+}
+
+.dark .rd-metricas-tabla td {
+    border-top-color: rgb(255 255 255 / 0.08);
+}
+
+.rd-metricas-barra {
+    height: 0.5rem;
+    min-width: 2px;
+    border-radius: 0.25rem;
+    background: var(--primary-600);
+}
+
+.dark .rd-metricas-barra {
+    background: var(--primary-400);
+}
+
+.rd-solo-lector {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

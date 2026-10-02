@@ -99,7 +99,7 @@
                         value="{{ $anterior['email'] ?? '' }}"
                         aria-describedby="{{ $describe('email', 'ayuda-email') }}"
                         @if ($errores->has('email')) aria-invalid="true" @endif
-                        class="mt-2 block min-h-11 w-full rounded-md border border-borde-2 bg-lienzo px-3 text-tinta">
+                        class="mt-2 block min-h-11 w-full rounded-md border border-atenuado bg-lienzo px-3 text-tinta">
                     @if ($errores->has('email'))
                         <p id="error-email" class="mt-2 text-sm font-medium text-error">Error: {{ $errores->first('email') }}</p>
                     @endif
@@ -111,7 +111,7 @@
                     <select id="campo-comuna" name="comuna"
                         aria-describedby="{{ $describe('comuna', 'ayuda-comuna') }}"
                         @if ($errores->has('comuna')) aria-invalid="true" @endif
-                        class="mt-2 block min-h-11 w-full rounded-md border border-borde-2 bg-lienzo px-3 text-tinta">
+                        class="mt-2 block min-h-11 w-full rounded-md border border-atenuado bg-lienzo px-3 text-tinta">
                         <option value="">Prefiero no decirlo</option>
                         @foreach ($comunas as $region => $lista)
                             <optgroup label="{{ $region }}">
