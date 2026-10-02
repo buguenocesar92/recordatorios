@@ -62,3 +62,12 @@ Schedule::command('queue:prune-failed', ['--hours=168'])
 Schedule::command('activitylog:clean')
     ->weekly()
     ->withoutOverlapping();
+
+/*
+ * Mantenimiento diario del MVP (spec §8.4): a las 03:00 UTC, no en la hora
+ * local de la app. Hoy purga la lista de espera sin confirmar vencida.
+ */
+Schedule::command('maintenance:daily')
+    ->dailyAt('03:00')
+    ->timezone('UTC')
+    ->withoutOverlapping();
