@@ -1,0 +1,729 @@
+/* ============================================================================
+   Tema Filament municipal — Municipalidad de Graneros · "Sala de Gobierno"
+   Riesgo estético: barra lateral OSCURA petróleo con acentos oro/lima y escudo
+   con resplandor. Panel autoritario e inconfundible, no un Filament genérico.
+   ============================================================================ */
+:root{
+    --mg-lima:#adcd60; --mg-lima-br:#c3e07a; --mg-petroleo:#355a63; --mg-petroleo-d:#0d3a44;
+    --mg-tinta-d:#08252b; --mg-oro:#eab02c; --mg-oro-br:#f5c542; --mg-naranja:#c76421;
+    --mg-celeste:#7ccbe1; --mg-carmin:#ca3048;
+    --mg-papel:#f6f3ea; --mg-papel-2:#efece1; --mg-borde:#e2ddce; --mg-tinta:#20302f;
+    --mg-sb-txt:#cfe3e1; --mg-sb-mut:#7ea3a3;
+
+    /* ── Puente hacia los componentes <x-muni::*> ───────────────────────────
+       Los componentes del paquete leen tokens «--muni-*», y este tema solo
+       definía los «--mg-*». Dentro del panel quedaban con las variables
+       vacías: la barra de <x-muni::chart-bar> se dibujaba con el alto correcto
+       pero con «background:none», y el esqueleto de carga salía invisible.
+       Ningún error en consola — simplemente no se veían, y por eso nadie los
+       usaba en el panel.
+
+       Los de estado NO son los del cinturón institucional: medidos como texto
+       sobre el papel del panel dan lima 1,62 · oro 1,76 · celeste 1,65, muy por
+       debajo del 4,5:1 que exige WCAG AA. Se usan versiones oscurecidas de esos
+       mismos tonos (5,3 a 6,4) y el cinturón queda para franjas y fondos, que
+       es donde se ve bien. En modo oscuro se invierte: ahí los institucionales
+       rinden 9:1 y son los correctos.
+       ──────────────────────────────────────────────────────────────────── */
+    --muni-text:        var(--mg-tinta);
+    --muni-muted:       #5a6d6b;  /* 4,4955 sobre --muni-surface-3 (papel-2): 11 nodos de 5 componentes bajo umbral. Ahora 4,63. */
+    --muni-hint:        #5f6e6c;
+
+    --muni-bg:          #f8f5ec;
+    --muni-surface:     #ffffff;
+    --muni-surface-2:   var(--mg-papel);
+    --muni-surface-3:   var(--mg-papel-2);
+
+    --muni-border:      var(--mg-borde);
+    --muni-border-2:    #cfc7b3;
+    /* Límite de un control: 1.4.11 pide 3:1 y el beige del panel no llegaba
+       (1,4:1 sobre el papel). Ver DESIGN §7: el token se declara acá TAMBIÉN
+       porque muni-ui.css no se carga dentro de un panel Filament. */
+    --muni-field-border: #90815b;
+    --muni-field-border-error: var(--muni-danger-fg);
+    /* Límite de una superficie que FLOTA (popover, dropdown, modal, drawer,
+       avisos): el beige de --muni-border daba 1,15:1 sobre el papel y el panel
+       lo separaba solo la sombra. Se declara acá TAMBIÉN, como el de campo,
+       porque muni-ui.css no se carga en un panel Filament (DESIGN §7). El
+       comentario completo está en muni-ui.css. Medido: 3,83:1 sobre
+       --muni-surface, 3,52:1 sobre --muni-bg y 3,24:1 sobre --muni-surface-3
+       (papel-2), el peor caso. */
+    --muni-overlay-border: #90815b;
+    /* Velo de un diálogo con fondo (modal, drawer, paleta). Color opaco: la
+       opacidad la pone el componente. Se declara acá TAMBIÉN porque muni-ui.css
+       no se carga en un panel (DESIGN §7); comentario completo en esa hoja.
+       Medido compuesto sobre cada superficie del panel: el panel blanco contra
+       el velo da 3,60:1 o más. */
+    --muni-scrim:       #0a0e14;
+
+    --muni-accent:        var(--mg-petroleo);
+    --muni-accent-strong: var(--mg-petroleo-d);
+    --muni-accent-soft:   color-mix(in srgb, var(--mg-petroleo) 10%, #fff);
+    --muni-on-accent:     #ffffff;
+    /* Color del INDICADOR DE FOCO de los componentes <x-muni::*>. Va aparte de
+       `--muni-ring` porque el anillo es una `box-shadow` y aquí dentro se pierde:
+       medido en el panel de licencias-graneros, el foco de un input se computaba
+       `oklab(0 0 0 / 0) 0px 0px 0px 0px`. El indicador real es un `outline`, que
+       la cadena de sombras de Tailwind/Filament no toca.
+       Medido: #355a63 sobre #ffffff = 7,52:1 · sobre --muni-surface-3 #efece1 =
+       6,35:1 (peor caso de este bloque). Mínimo WCAG 2.2 AA (1.4.11): 3:1. */
+    --muni-focus:         var(--mg-petroleo);
+
+    --muni-ok-fg:       #4a6b1f;
+    --muni-ok-bg:       #e6f0da;
+    --muni-ok-border:   #4a6b1f;
+    --muni-warn-fg:     #8a5a00;
+    --muni-warn-bg:     #f7ecd2;
+    --muni-warn-border: #8a5a00;
+    --muni-info-fg:     #1d5f75;
+    --muni-info-bg:     #dce8f0;
+    --muni-info-border: #1d5f75;
+    --muni-danger-fg:   #a3132a;
+    --muni-danger-bg:   #f7dde1;
+    --muni-danger-border: #e0a3ad;
+
+    /* Cinturón institucional: los mismos 7 colores del escudo, expuestos como
+       tokens `--muni-*` para que <x-muni::gob-*> los lea sin depender de que
+       el host publique este tema (ver hallazgo de tokens faltantes). */
+    --muni-gob-lima:           var(--mg-lima);
+    --muni-gob-petroleo:       var(--mg-petroleo);
+    --muni-gob-petroleo-dark:  var(--mg-petroleo-d);
+    --muni-gob-oro:            var(--mg-oro);
+    --muni-gob-naranja:        var(--mg-naranja);
+    --muni-gob-celeste:        var(--mg-celeste);
+    --muni-gob-carmin:         var(--mg-carmin);
+    --muni-gob-gris:           #9c9b9b;
+
+    --muni-radius:      10px;
+    --muni-radius-sm:   7px;
+    --muni-radius-lg:   14px;
+
+    --muni-shadow:      0 1px 2px rgba(16,24,40,.04), 0 2px 8px rgba(16,24,40,.06);
+    --muni-shadow-md:   0 4px 16px rgba(16,24,40,.10);
+    --muni-shadow-lg:   0 12px 32px rgba(16,24,40,.14);
+    --muni-ring:        0 0 0 3px color-mix(in srgb, var(--muni-accent) 30%, transparent);
+    --muni-glow:        none;
+
+    --muni-ease:        cubic-bezier(.22, 1, .36, 1);
+    --muni-dur:         160ms;
+    /* Movimiento largo (el arco de `ring`): mismo valor y misma regla que en
+       muni-ui.css. Solo en :root, nunca en `.dark`, y baja a 0 ms con
+       prefers-reduced-motion en el bloque que sigue a este. */
+    --muni-dur-slow:    600ms;
+    --muni-topbar-h:    56px;
+
+    /* La tipografía la manda el panel: pedir aquí una familia propia haría que
+       un componente suelto se viera distinto al resto de la pantalla. */
+    --muni-font-sans:   inherit;
+    --muni-font-mono:   ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* Placa del escudo en `topbar` y `auth-shell` (comentario completo en
+       muni-ui.css). Se declara acá TAMBIÉN porque muni-ui.css no se carga en un
+       panel Filament (DESIGN §7). El texto usa la tinta oscura del panel.
+       Medido: texto #08252b 16,03:1 sobre la placa · contorno del escudo
+       (#00404c) 11,43:1. */
+    --muni-logo-plate:    #ffffff;
+    --muni-logo-plate-fg: #08252b;
+}
+
+/* Respeta la preferencia de movimiento reducido en todo el panel. Mismo bloque
+   y mismos tokens que muni-ui.css: dentro de un panel Filament esta es la ÚNICA
+   hoja que se carga (DESIGN §7), y cuando solo bajaba --muni-dur-slow toda
+   transición de todo componente <x-muni::*> seguía en 160 ms con la preferencia
+   activa (medido en Chromium y Firefox: <x-muni::button> computaba 0.16s). Va
+   DESPUÉS del :root de arriba para ganarle la cascada a igual especificidad.
+   Las guardias propias de cada componente se quedan: cubren al sistema que
+   todavía tiene publicada la hoja anterior. */
+@media (prefers-reduced-motion: reduce) {
+    :root { --muni-dur: 0ms; --muni-dur-slow: 0ms; }
+}
+
+/* En oscuro mandan los tonos institucionales: sobre la superficie del panel
+   (#0f2025) rinden entre 7:1 y 10:1, muy por encima del mínimo. */
+.dark {
+    --muni-text:        #eaf5f3;
+    /* Calibrado contra los CUATRO fondos de estado, no solo contra las superficies:
+       #94a3b8 daba 6,5:1 sobre --muni-surface pero 4,33:1 sobre --muni-warn-bg
+       (#383e2a), 4,41 sobre ok y 4,37 sobre info, y el cuerpo de un aviso en
+       oscuro se pinta justo ahí. Medido: #a3b1c4 = 5,10 (warn) · 5,19 (ok) ·
+       5,15 (info) · 5,75 (danger) · 7,69 sobre --muni-surface. */
+    --muni-muted:       #a3b1c4;
+    --muni-hint:        #8191a3;  /* 4,4627 sobre --muni-surface-3 oscuro: la ayuda de input, textarea y rut-input. Ahora 4,64. */
+
+    --muni-bg:          #081418;
+    --muni-surface:     #0f2025;
+    --muni-surface-2:   #0d1c20;
+    --muni-surface-3:   #142a30;
+
+    --muni-border:      #1c343a;
+    --muni-border-2:    #2a4a52;
+    --muni-field-border: #467c89;
+    --muni-field-border-error: var(--muni-danger-fg);
+    /* Medido: 4,01:1 sobre --muni-bg, 3,59:1 sobre --muni-surface y 3,21:1
+       sobre --muni-surface-3 #142a30 (peor caso). Mínimo exigido: 3:1. */
+    --muni-overlay-border: #467c89;
+    /* Ver el comentario del bloque claro. Medido: el borde flotante contra el
+       velo compuesto da 3,72:1 o más sobre toda superficie (peor caso
+       --muni-surface-3). Con el petróleo que usaba el modal daba 2,89:1. */
+    --muni-scrim:       #0a0e14;
+
+    --muni-accent:        var(--mg-celeste);
+    --muni-accent-strong: var(--mg-lima-br);
+    --muni-accent-soft:   color-mix(in srgb, var(--mg-celeste) 14%, transparent);
+    --muni-on-accent:     #08252b;
+    /* Ver el comentario del bloque claro. Medido: #7ccbe1 sobre --muni-surface
+       #0f2025 = 9,16:1 · sobre --muni-surface-3 #142a30 = 8,18:1 (peor caso).
+       Mínimo exigido: 3:1. */
+    --muni-focus:         var(--mg-celeste);
+
+    --muni-ok-fg:       var(--mg-lima);
+    --muni-ok-bg:       color-mix(in srgb, var(--mg-lima) 18%, #0f2025);
+    --muni-ok-border:   var(--mg-lima);
+    --muni-warn-fg:     var(--mg-oro-br);
+    --muni-warn-bg:     color-mix(in srgb, var(--mg-oro-br) 18%, #0f2025);
+    --muni-warn-border: var(--mg-oro-br);
+    --muni-info-fg:     var(--mg-celeste);
+    --muni-info-bg:     color-mix(in srgb, var(--mg-celeste) 18%, #0f2025);
+    --muni-info-border: var(--mg-celeste);
+    --muni-danger-fg:   #ff8195;
+    --muni-danger-bg:   color-mix(in srgb, #ff8195 18%, #0f2025);
+    --muni-danger-border: #6b2430;
+
+    --muni-shadow:      0 1px 2px rgba(0,0,0,.30), 0 2px 8px rgba(0,0,0,.35);
+    --muni-shadow-md:   0 4px 16px rgba(0,0,0,.40);
+    --muni-shadow-lg:   0 12px 32px rgba(0,0,0,.50);
+    --muni-topbar-h:    52px;
+    /* Placa apagada: 80 % de blanco sobre --muni-bg (#081418), para que el escudo
+       no sea un recuadro blanco en la cabecera oscura. Medido: texto #08252b
+       10,36:1 sobre la placa · contorno del escudo 7,38:1. */
+    --muni-logo-plate:    #ced0d1;
+    --muni-logo-plate-fg: #08252b;
+}
+
+/* ══ BARRA LATERAL OSCURA — el gran cambio ══════════════════════════════════ */
+.fi-sidebar, .fi-sidebar-nav {
+    background:linear-gradient(185deg,#10424c 0%, #0b2f37 55%, #082228 100%) !important;
+    border-inline-end:1px solid #0a2930 !important;
+    box-shadow:inset -18px 0 40px -30px #000;
+}
+.fi-sidebar-header {
+    background:linear-gradient(180deg,#0e3b45,#0a2c34) !important;
+    border-bottom:1px solid #0a2930 !important;
+    box-shadow:0 3px 0 0 rgba(173,205,96,.55), 0 10px 24px -12px #000;
+}
+/* Escudo con resplandor */
+.fi-sidebar-header img, .fi-topbar-logo img, .fi-logo img { filter:drop-shadow(0 0 10px rgba(173,205,96,.45)); }
+
+/* Etiquetas de grupo: rótulo dorado con tick */
+.fi-sidebar-group-label {
+    position:relative; color:var(--mg-oro-br) !important; font-weight:800;
+    letter-spacing:.1em; text-transform:uppercase; font-size:.64rem; padding-inline-start:.9rem; opacity:.95;
+}
+.fi-sidebar-group-label::before{ content:""; position:absolute; inset-inline-start:0; top:50%; transform:translateY(-50%); width:5px; height:5px; border-radius:1px; background:var(--mg-lima); box-shadow:0 0 6px var(--mg-lima); }
+.fi-sidebar-group .fi-icon-btn { color:var(--mg-sb-mut) !important; }
+
+/* Ítems: texto e icono claros */
+/* Solo lo que cambia de verdad al pasar el mouse. Con `all`, `outline-color` y
+   `box-shadow` también se interpolan y el anillo de foco tarda 160 ms en
+   aparecer: axe y CDP lo miden a mitad de camino y lo dan por invisible. */
+.fi-sidebar-item-btn { border-radius:10px; font-weight:600; transition:background-color .16s, color .16s; }
+.fi-sidebar-item-label { color:var(--mg-sb-txt) !important; }
+.fi-sidebar-item-icon { color:var(--mg-sb-mut) !important; }
+.fi-sidebar-item-btn:hover { background:rgba(255,255,255,.06) !important; }
+.fi-sidebar-item-btn:hover .fi-sidebar-item-label { color:#fff !important; }
+.fi-sidebar-item-btn:hover .fi-sidebar-item-icon { color:var(--mg-lima-br) !important; }
+
+/* Ítem ACTIVO: píldora con brillo lima→oro y resplandor */
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn {
+    background:linear-gradient(120deg, rgba(173,205,96,.22), rgba(234,176,44,.16)) !important;
+    box-shadow:inset 0 0 0 1px rgba(173,205,96,.45), 0 8px 20px -8px rgba(0,0,0,.6);
+    font-weight:800; position:relative;
+}
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn .fi-sidebar-item-label,
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn { color:#fff !important; }
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn .fi-sidebar-item-icon { color:var(--mg-lima-br) !important; }
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn::before{ content:""; position:absolute; inset-inline-start:-4px; top:8px; bottom:8px; width:4px; border-radius:4px; background:linear-gradient(180deg,var(--mg-lima-br),var(--mg-oro)); box-shadow:0 0 10px rgba(173,205,96,.7); }
+/* Badges del sidebar (contadores) */
+.fi-sidebar-item-badge { background:var(--mg-oro) !important; color:#3a2a05 !important; font-weight:800; }
+
+/* Colapsar/expandir grupos: chevron claro */
+.fi-sidebar-group-collapse-button { color:var(--mg-sb-mut) !important; }
+
+/* Pie institucional del sidebar (oscuro) */
+.mg-sidebar-foot{ margin-top:auto; padding:.9rem 1rem; border-top:1px solid rgba(255,255,255,.08); display:flex; align-items:center; gap:.6rem; background:linear-gradient(180deg,transparent,rgba(0,0,0,.25)); }
+.mg-sidebar-foot img{ width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 0 6px rgba(173,205,96,.4)); }
+.mg-sidebar-foot b{ font-size:.72rem; font-weight:800; color:#fff; line-height:1.1; display:block; }
+.mg-sidebar-foot span{ font-size:.64rem; color:var(--mg-sb-mut); }
+.fi-sidebar-nav{ display:flex; flex-direction:column; } .fi-sidebar-nav-groups{ flex:1; }
+
+/* ══ BARRA SUPERIOR: cristal cálido ═════════════════════════════════════════ */
+/* En Filament 5.7 la barra ES `nav.fi-topbar` (livewire/topbar.blade.php); el
+   selector anterior, `.fi-topbar > nav`, no alcanzaba a nada y la barra quedaba
+   en el blanco/gray-900 de Filament sobre un panel que no es gris. */
+.fi-topbar { background:color-mix(in srgb,#fff 82%, var(--mg-papel)) !important; backdrop-filter:saturate(1.2) blur(6px); border-bottom:1px solid var(--mg-borde); box-shadow:0 4px 20px -12px rgba(13,58,68,.25); }
+.fi-topbar .fi-input-wrp, .fi-global-search-field .fi-input-wrp { border-radius:11px; border:1px solid var(--mg-borde); box-shadow:inset 0 1px 2px rgba(13,58,68,.05); }
+.fi-global-search-field .fi-input-wrp:focus-within { border-color:var(--mg-petroleo); box-shadow:0 0 0 3px color-mix(in srgb,var(--mg-petroleo) 18%,transparent); }
+.fi-topbar .fi-avatar { box-shadow:0 0 0 2px #fff,0 0 0 3px color-mix(in srgb,var(--mg-petroleo) 55%,transparent); }
+
+/* ══ CONTENIDO: papel cálido ════════════════════════════════════════════════ */
+.fi-body, .fi-main-ctn, .fi-main { background-color:#f8f5ec !important; }
+
+/* Cabecera de página: título grande + regla franja */
+.fi-header-heading { font-weight:800 !important; letter-spacing:-.02em; color:var(--mg-petroleo-d) !important; font-size:1.9rem !important; }
+.fi-main > .fi-header, .fi-page > .fi-header { position:relative; padding-bottom:1rem; }
+.fi-main > .fi-header::after, .fi-page > .fi-header::after { content:""; position:absolute; left:0; bottom:0; width:72px; height:3px; border-radius:2px; background:linear-gradient(90deg,var(--mg-petroleo),var(--mg-lima),var(--mg-oro)); }
+
+/* ══ TARJETAS / SECCIONES / WIDGETS ════════════════════════════════════════ */
+.fi-section, .fi-wi-stats-overview-stat, .fi-wi {
+    border:1px solid var(--mg-borde) !important; border-radius:18px !important; background:#fff;
+    box-shadow:0 1px 2px rgba(13,58,68,.04), 0 14px 34px -20px rgba(13,58,68,.28) !important;
+}
+.fi-wi-stats-overview-stat { position:relative; overflow:hidden; border-top:3px solid var(--mg-petroleo) !important; background:linear-gradient(180deg,color-mix(in srgb,var(--mg-petroleo) 5%,#fff),#fff) !important; }
+.fi-wi-stats-overview-stat::after{ content:""; position:absolute; top:0; right:0; width:130px; height:130px; pointer-events:none; background:radial-gradient(circle at 100% 0, color-mix(in srgb,var(--mg-petroleo) 12%,transparent), transparent 70%); }
+.fi-wi-stats-overview-stat-value { font-weight:800 !important; letter-spacing:-.02em; color:var(--mg-petroleo-d) !important; font-size:2.4rem !important; line-height:1.05; }
+.fi-wi-stats-overview-stat-label { font-weight:600; color:var(--mg-tinta); }
+.fi-section-header-heading { position:relative; padding-inline-start:.85rem; font-weight:700; color:var(--mg-petroleo-d); }
+.fi-section-header-heading::before{ content:""; position:absolute; inset-inline-start:0; top:50%; transform:translateY(-50%); width:4px; height:1.05em; border-radius:2px; background:linear-gradient(180deg,var(--mg-petroleo),var(--mg-lima)); }
+
+/* ══ BOTONES / BADGES / FORM / TABLAS ══════════════════════════════════════ */
+.fi-btn { border-radius:11px !important; font-weight:600; }
+.fi-btn.fi-color-primary, .fi-btn-color-primary { box-shadow:0 10px 22px -10px rgba(13,58,68,.55); background-image:linear-gradient(180deg,rgba(255,255,255,.1),transparent); }
+.fi-btn:active { transform:translateY(1px); }
+.fi-badge { font-weight:700; border-radius:8px; }
+.fi-input-wrp { border-radius:11px !important; border:1px solid var(--mg-borde); }
+.fi-input-wrp:focus-within { border-color:var(--mg-petroleo) !important; box-shadow:0 0 0 3px color-mix(in srgb,var(--mg-petroleo) 18%,transparent) !important; }
+.fi-ta-header-cell { background:color-mix(in srgb,var(--mg-papel) 40%,#fff); font-weight:700; color:var(--mg-petroleo); text-transform:uppercase; letter-spacing:.03em; font-size:.7rem; }
+.fi-ta-row:hover { background:color-mix(in srgb,var(--mg-petroleo) 4%,transparent); }
+/* OJO: nada de overflow:hidden aquí — recorta el área scrollable del modal y deja
+   los formularios largos sin poder bajar ni ver los botones de cerrar/guardar.
+   La cinta lleva su propio radio superior para respetar las esquinas. */
+.fi-modal-window { border-radius:20px !important; box-shadow:0 44px 90px -32px rgba(13,58,68,.6) !important; }
+.fi-modal-window::before{ content:""; display:block; height:4px; border-radius:20px 20px 0 0; background:linear-gradient(90deg,var(--mg-lima),var(--mg-petroleo) 45%,var(--mg-oro)); }
+.fi-dropdown-panel { border-radius:14px !important; border:1px solid var(--mg-borde); box-shadow:0 24px 54px -26px rgba(13,58,68,.45) !important; }
+/* Filament 5.7 no colorea el ítem: pinta `span.fi-tabs-item-label` y el ícono
+   directo con `primary-700`/`primary-400` (support/…/tabs/item.blade.php). Una
+   regla sobre `.fi-tabs-item.fi-active` a secas no cambia nada, y la pestaña
+   activa quedaba en el primario de Filament: 4,33:1 en oscuro en rrhh-graneros. */
+.fi-tabs-item.fi-active .fi-tabs-item-label,
+.fi-tabs-item.fi-active > .fi-icon { color:var(--mg-petroleo-d) !important; }
+/*
+ * La pestaña activa en oscuro, que también faltaba.
+ *
+ * `--mg-petroleo-d` (#0d3a44) sobre el fondo oscuro del panel (#081418) da
+ * 1,52:1: la pestaña SELECCIONADA sería la menos legible de la fila, justo al
+ * revés de lo que tiene que pasar. Se usa `--muni-accent-strong`, que en oscuro
+ * ES `--mg-lima-br`, el mismo acento que este archivo ya emplea sobre fondo oscuro
+ * para el encabezado de tabla: 12,69:1. Va por el token y no por `--mg-lima-br`
+ * para que el bloque de impresión lo alcance (ver «MODO OSCURO» más abajo).
+ *
+ * No se detectó en uso —el CAD de Seguridad Pública no tiene pestañas— sino
+ * revisando el archivo entero después de encontrar el de las etiquetas de KPI.
+ * Cualquier sistema del ecosistema que sí las use lo tiene activo.
+ */
+.dark .fi-tabs-item.fi-active .fi-tabs-item-label,
+.dark .fi-tabs-item.fi-active > .fi-icon { color:var(--muni-accent-strong) !important; }
+
+/* ══ ENTRADA ESCALONADA ════════════════════════════════════════════════════ */
+@keyframes mg-fall{ from{transform:translateY(-14px)} to{transform:none} }
+/* El relleno va 'backwards', NUNCA 'both'. Con 'both' el navegador retiene el
+   fotograma final y, aunque diga transform:none, lo computa como matriz identidad:
+   eso basta para crear un containing block y los modales y paneles laterales
+   (position:fixed) se anclan a la tabla en vez de a la ventana, dejando el botón
+   de guardar fuera de la pantalla. Con 'backwards' la entrada escalonada se ve
+   igual y el transform desaparece al terminar. */
+.fi-wi, .fi-section, .fi-ta { animation:mg-fall .5s cubic-bezier(.34,1.3,.64,1) backwards; }
+.fi-wi:nth-child(2){animation-delay:.07s} .fi-wi:nth-child(3){animation-delay:.13s} .fi-wi:nth-child(4){animation-delay:.19s} .fi-wi:nth-child(5){animation-delay:.25s} .fi-wi:nth-child(6){animation-delay:.31s}
+@media (prefers-reduced-motion:reduce){ .fi-wi,.fi-section,.fi-ta{animation:none !important} }
+
+/* ══ DEFENSA iconos gigantes en páginas custom ═════════════════════════════ */
+.fi-main-ctn a > svg, .fi-main-ctn button > svg, .fi-main-ctn label > svg { width:1.15rem !important; height:1.15rem !important; flex:none; }
+
+/* ══ LOGIN: cinta + tarjeta oficial ════════════════════════════════════════ */
+.fi-simple-layout { background:#f8f5ec !important; }
+.fi-simple-layout::before{ content:""; position:fixed; top:0; left:0; right:0; height:5px; z-index:60; background:linear-gradient(90deg,var(--mg-lima) 0 14.28%,var(--mg-petroleo) 14.28% 28.57%,var(--mg-oro) 28.57% 42.85%,var(--mg-naranja) 42.85% 57.14%,var(--mg-celeste) 57.14% 71.42%,var(--mg-carmin) 71.42% 85.71%,#9c9b9b 85.71% 100%); }
+.fi-simple-main { border:1px solid var(--mg-borde) !important; border-radius:20px !important; box-shadow:0 34px 80px -38px rgba(13,58,68,.55) !important; }
+
+/* ══ MODO OSCURO (el panel ya oscuro) ══════════════════════════════════════ */
+/* Alpine esconde con `[x-cloak]` lo que aún no montó, pero la regla que lo hace
+   invisible vive en `muni-ui.css`, que DENTRO DE UN PANEL NO SE CARGA. Sin ella,
+   diez componentes del paquete muestran su contenido en crudo durante el primer
+   pintado: el menú del dropdown desplegado, el panel del accordion abierto y
+   —lo peor— los dos tab-panel a la vez. Medido en Chromium, Firefox y WebKit.
+   Filament tampoco la aporta: cero apariciones en sus cuatro CSS de dist. */
+[x-cloak] { display:none !important; }
+
+/* EL MODO OSCURO DEL TEMA LEE TOKENS, NO ESCRIBE COLORES.
+   Cada regla `.dark …` de este archivo toma su color, fondo y borde de un
+   `--muni-*` cuyo valor oscuro es EXACTAMENTE el literal que antes iba escrito
+   acá (#081418 = --muni-bg, #0f2025 = --muni-surface, #0d1c20 = --muni-surface-2,
+   #1c343a = --muni-border, #eaf5f3 = --muni-text, --mg-lima-br =
+   --muni-accent-strong). En pantalla no cambia un píxel.
+
+   Cambia en papel. El bloque de impresión redefine esos tokens en la raíz, con
+   el mismo selector y después que el bloque `.dark` de arriba, así que gana por
+   orden. Un literal, en cambio, vive en la hoja del elemento: ningún reset de la
+   raíz lo alcanza, y con `!important` y 0,2,0 tampoco un reset de `body`. Así
+   imprimían el título de página y el de cada tarjeta, #eaf5f3 sobre blanco a
+   1,11:1 (36 textos en la vitrina del panel), y así se imprimía el fondo de las
+   tablas en oscuro, que el arreglo de D9 no enumeraba.
+
+   La prueba `ImpresionGanaAlTemaTest` rechaza cualquier regla `.dark …` nueva que
+   escriba un color literal o lea una variable que la impresión no redefine. */
+.dark .fi-body, .dark .fi-main-ctn, .dark .fi-main { background-color:var(--muni-bg) !important; }
+.dark .fi-section, .dark .fi-wi, .dark .fi-wi-stats-overview-stat { background:var(--muni-surface) !important; border-color:var(--muni-border) !important; }
+.dark .fi-topbar { background:var(--muni-surface-2) !important; border-color:var(--muni-border); --tw-ring-color:var(--muni-border); }
+.dark .fi-header-heading, .dark .fi-wi-stats-overview-stat-value { color:var(--muni-text) !important; }
+/*
+ * La ETIQUETA del KPI, que faltaba.
+ *
+ * La regla clara de más arriba la pinta con `--mg-tinta` (#20302f), correcta
+ * sobre papel. Sin esta contraparte quedaba en 1,22:1 sobre la tarjeta oscura
+ * (#0f2025), contra un mínimo AA de 4,5:1: en la pantalla se veían los NÚMEROS y
+ * no se veía qué significaba cada uno. Se detectó midiendo en el navegador —en
+ * una captura parecen «tenues», no ausentes— en el CAD de Seguridad Pública, y
+ * afecta a todo sistema del ecosistema que use widgets de estadísticas en oscuro.
+ *
+ * Va con `--mg-sb-mut`, el tono que este mismo paquete ya usa para texto
+ * atenuado sobre fondo oscuro: 6,11:1 sobre la tarjeta, claramente legible y
+ * subordinado al valor (15:1), que es la jerarquía que corresponde. En papel no
+ * hay fondo oscuro: el bloque de impresión lo redefine al atenuado de la hoja.
+ *
+ * Hace falta `!important` porque la regla clara de este archivo también lo
+ * lleva; sin él ganaría la de arriba por orden.
+ */
+.dark .fi-wi-stats-overview-stat-label { color:var(--mg-sb-mut) !important; }
+.dark .fi-ta-header-cell { background:var(--muni-surface); color:var(--muni-accent-strong); }
+/* El título de cada tarjeta. Mismo motivo que los tres de abajo: arriba se
+   pinta de petróleo oscuro y el bloque oscuro no lo enumeraba, así que sobre la
+   tarjeta oscura quedaba en 1,36:1 —medido con getComputedStyle en el escritorio
+   de web-graneros, el 2026-08-18—. Con el color que ya usa el título de página
+   sube a 15:1. */
+.dark .fi-section-header-heading { color:var(--muni-text) !important; }
+
+/* Huecos del bloque oscuro de arriba, encontrados midiendo en el navegador el
+   2026-08-17 (adopción de la Ley 21.719 en discapacidad). Los tres salen del
+   mismo motivo: este archivo NO deriva el modo oscuro de tokens, sino que lo
+   escribe selector por selector, así que toda clase que no esté enumerada más
+   arriba se queda con su valor claro sin que nadie se entere.
+
+   1. `.fi-ta-ctn` — el contenedor de las TABLAS. Es el hueco caro: quedaba con
+      fondo blanco mientras el texto de las celdas tomaba el color del tema
+      oscuro. Contraste 1:1 y desaparecían nombres, RUT, teléfonos y fechas de
+      cualquier listado. Filament trae su propia regla oscura para esta clase,
+      pero vive en `@layer components` y cualquier regla sin capa —como las de
+      este archivo— le gana.
+   2. `.fi-simple-layout` — el lienzo del login. Con la tarjeta ya oscura, el
+      fondo seguía en papel claro.
+   3. El anillo de foco. `--mg-petroleo` al 18% se diseñó contra papel: medido
+      sobre superficie oscura daba ~1,1:1 el halo y ~1,9:1 el borde, bajo el 3:1
+      que WCAG 2.2 exige para indicadores no textuales (1.4.11 y 2.4.11). Con
+      `--muni-accent-strong` (en oscuro, `--mg-lima-br`) el borde queda sobre 12:1. No es cosmético: los sistemas del
+      Estado lo tienen obligado por el Decreto N°1/2015 SEGPRES. */
+.dark .fi-ta-ctn { background:var(--muni-surface) !important; border-color:var(--muni-border); }
+.dark .fi-simple-layout { background:var(--muni-bg) !important; }
+.dark .fi-input-wrp:focus-within {
+    border-color:var(--muni-accent-strong) !important;
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--muni-accent-strong) 35%,transparent) !important;
+}
+
+/* Tabs de relation managers: alineadas con el contenido, no centradas (Filament
+   les pone margin-inline:auto por defecto y quedaban flotando en medio). */
+.fi-sc-tabs > .fi-tabs { margin-inline: 0 !important; }
+
+/* ══ FILEPOND: TARJETA DE VIDEO ═════════════════════════════════════════════
+   Deuda cobrada de web-graneros: esta regla vivía parchada a mano en su
+   AdminPanelProvider, con el propio comentario reconociendo que el arreglo
+   correspondía acá. Sin ella, FilePond dibuja el preview de video con la
+   altura de la fila del archivo (~44px, overflow oculto) y al ancho completo
+   del formulario: queda una franja angosta dentro de una caja gris estirada.
+   Se rearma como una tarjeta compacta que abraza el video —sirve para
+   vertical, cuadrado y horizontal— acotada al root que trae un <video>, para
+   no tocar los campos de imagen o documento.
+   El observer que marca `.has-video-preview` sobre el `.filepond--root` (un
+   MutationObserver, porque FilePond agrega el <video> después de la carga)
+   sigue viviendo en cada app host: este paquete no trae bundle JS propio (ver
+   CLAUDE.md). Sin ese observer copiado a la app, estas reglas no se activan.
+
+   Sobre los `!important` que quedan: no son residuo del `<style>` inline
+   original. Esta hoja se registra en `PanelsRenderHook::STYLES_AFTER`
+   (`MuniPanel::register()`), es decir justo después de los estilos propios de
+   Filament y sus paquetes —FilePond incluido—, así que a la hoja de FilePond
+   ya le gana por orden de cascada sin forzar nada. Lo que el orden de carga
+   NO resuelve es que FilePond reescribe posición y tamaño de estos nodos
+   escribiéndolos directo en el atributo `style` con su propio motor de
+   layout/animación: un estilo inline le gana a cualquier regla de hoja de
+   estilos que no lleve `!important`, sin importar cuándo se cargó esa hoja.
+   Por eso se conserva solo en `position`, `width`, `height`, `margin`,
+   `transform`, `overflow` de los contenedores de lista y en el tamaño/ajuste
+   del video: son las propiedades que ese motor toca. Colores, bordes,
+   sombras, tipografía y espaciados son decorativos y no compiten con nada
+   inline, así que quedan sin forzar. */
+.filepond--root.has-video-preview{width:100% !important;background:transparent;border:none;box-shadow:none}
+/* El drop-label ("Arrastra un archivo…") sigue existiendo debajo del preview;
+   sin ocultarlo tapa el video y, encima, sus íconos de abrir/descargar quedan
+   detrás y no se pueden pulsar. */
+.filepond--root.has-video-preview .filepond--drop-label{display:none !important;pointer-events:none !important}
+.filepond--root.has-video-preview .filepond--panel-root{background:transparent;border:none}
+/* Contenedores de lista: acá es donde FilePond fija por JS la altura de fila
+   (~44px) y el overflow oculto que aplasta el video. `position`, `overflow` y
+   `margin` van forzados porque esos valores los reescribe su motor de layout,
+   no solo su hoja de estilos. */
+.filepond--root.has-video-preview .filepond--list-scroller{position:relative !important;overflow:visible !important;margin:0 !important}
+.filepond--root.has-video-preview .filepond--list{position:relative !important;height:auto !important;display:flex;justify-content:center}
+.filepond--root.has-video-preview .filepond--item{position:relative !important;width:auto !important;height:auto !important;margin:0 !important}
+.filepond--root.has-video-preview .filepond--file-wrapper{position:relative !important;width:auto !important;height:auto !important}
+.filepond--root.has-video-preview .filepond--file{position:relative !important;display:flex;flex-direction:column;align-items:stretch;width:auto !important;height:auto !important;padding:.6rem;gap:.5rem}
+/* Tarjeta visual del video: cabecera con nombre/peso arriba (legible en claro
+   y oscuro) y fondo ceñido al contenido. `position`/`inset`/`width`/`height`/
+   `transform` forzados porque FilePond anima este panel escribiendo esas
+   propiedades inline durante la subida; el resto es solo la piel de la
+   tarjeta. */
+.filepond--root.has-video-preview .filepond--item-panel{position:absolute !important;inset:0 !important;width:auto !important;height:auto !important;transform:none !important;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;box-shadow:0 1px 3px rgb(0 0 0 / .06)}
+.dark .filepond--root.has-video-preview .filepond--item-panel{background:var(--muni-surface-2);border-color:var(--muni-border)}
+.filepond--root.has-video-preview .filepond--file-info{position:relative !important;width:100% !important;max-width:100% !important;display:flex;justify-content:flex-start;gap:.5rem;align-items:center;margin:0 !important;transform:none !important;padding:0 2rem .35rem .25rem;border-bottom:1px solid #e2e8f0}
+.filepond--root.has-video-preview .filepond--file-info-main{color:#0f172a;font-weight:600;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.filepond--root.has-video-preview .filepond--file-info-sub{color:#64748b;font-size:.72rem}
+.dark .filepond--root.has-video-preview .filepond--file-info-main{color:var(--muni-text)}
+.dark .filepond--root.has-video-preview .filepond--file-info-sub{color:var(--muni-muted)}
+.filepond--root.has-video-preview .filepond--media-preview-wrapper,.filepond--root.has-video-preview .filepond--media-preview{position:relative !important;width:auto !important;height:auto !important;overflow:visible !important;background:transparent;display:flex;justify-content:center}
+.filepond--root.has-video-preview .filepond--media-preview-wrapper:before{display:none !important}
+/* El video: altura fija define el tamaño de toda la tarjeta. `object-fit`
+   forzado porque el plugin de preview de FilePond calcula y escribe su propio
+   ajuste inline al leer las dimensiones reales del archivo. */
+.filepond--root.has-video-preview video{position:relative !important;display:block !important;height:340px !important;width:auto !important;max-width:100% !important;object-fit:contain !important;background:#000;border-radius:.5rem}
+/* La X (quitar) va arriba a la derecha, clicable por encima de todo; abrir y
+   descargar quedan visibles en la cabecera. Sin forzar z-index/pointer-events
+   el drop-label oculto (ver arriba) los sigue tapando y dejan de responder al
+   clic, aunque se vean. */
+.filepond--root.has-video-preview .filepond--file-action-button{position:absolute !important;top:.5rem !important;right:.5rem !important;left:auto !important;bottom:auto !important;z-index:20 !important;pointer-events:auto !important;background:rgba(0,0,0,.55);color:#fff}
+.filepond--root.has-video-preview .filepond--open-icon,.filepond--root.has-video-preview .filepond--download-icon{position:relative !important;z-index:20 !important;pointer-events:auto !important;opacity:1 !important;color:#334155}
+.dark .filepond--root.has-video-preview .filepond--open-icon,.dark .filepond--root.has-video-preview .filepond--download-icon{color:var(--muni-muted)}
+
+/* ── IMPRESIÓN ───────────────────────────────────────────────────────────────
+   Copia DELIBERADA de las reglas de impresión de `muni-ui.css` (DESIGN §7):
+   `MuniPanel` inyecta en el panel solo esta hoja, así que una regla que viviera
+   únicamente en la otra no existiría dentro de Filament y no daría ningún error
+   en consola. Si se cambia una, se cambian las dos.
+
+   PROHIBIDO `print-color-adjust: exact`: no garantiza nada —el usuario puede
+   desactivar los gráficos de fondo en el propio diálogo— y donde sí se respeta,
+   el tóner lo paga el municipio. Por eso los fondos de estado pasan a blanco y
+   el estado queda en el borde y en el texto, que son lo que sí se imprime.
+
+   `--muni-field-border` y `--muni-focus` no se redefinen a propósito: el borde
+   de un campo se lee igual en papel y en papel no hay foco. */
+
+@page{
+    /* Los márgenes por defecto del navegador dejan el membrete pegado al borde. */
+    margin:16mm 18mm;
+}
+
+@media print{
+    /* PALETA CLARA FORZADA, dentro del media query: fuera pisaría la pantalla.
+       Los activadores explícitos de oscuro se enumeran uno por uno porque ganan
+       por cascada sobre `:root` — el panel pone `.dark` en el <html>. */
+    :root,
+    [data-muni-theme="dark"],
+    [data-theme="dark"],
+    .dark{
+        --muni-bg:#ffffff;
+        --muni-surface:#ffffff;
+        --muni-surface-2:#ffffff;
+        --muni-surface-3:#ffffff;
+        --muni-text:#000000;
+        --muni-muted:#3a3f4b;
+        /* Derivado del atenuado en vez de repetir un hex: los dos se leen sobre
+           el mismo papel blanco. */
+        --muni-hint:var(--muni-muted);
+        --muni-border:#767676;
+        --muni-border-2:#3a3f4b;
+        /* Sin sombra en papel, el borde es el único límite del panel. Sin esta
+           línea, un panel dentro de `.dark` imprimiría con el valor oscuro.
+           #767676 sobre blanco = 4,54:1. */
+        --muni-overlay-border:#767676;
+        /* Texto sobre el papel Y relleno con `--muni-on-accent` negro encima: los
+           dos a 4,5:1. Con #0f766e el negro sobre el botón primario daba 3,84:1 al
+           imprimir con fondos. #11847b: 4,61:1 encima · 4,56:1 como texto. Ver el
+           comentario gemelo en `muni-ui.css`. */
+        --muni-accent:#11847b;
+        --muni-accent-strong:#115e59;
+        --muni-accent-soft:#ffffff;
+        --muni-on-accent:#000000;
+        --muni-ok-fg:#0f5c44;
+        --muni-ok-bg:#ffffff;
+        --muni-ok-border:#0f5c44;
+        --muni-warn-fg:#8a5a00;
+        --muni-warn-bg:#ffffff;
+        --muni-warn-border:#8a5a00;
+        --muni-danger-fg:#b03030;
+        --muni-danger-bg:#ffffff;
+        --muni-danger-border:#b03030;
+        --muni-info-fg:#1f5fb0;
+        --muni-info-bg:#ffffff;
+        --muni-info-border:#1f5fb0;
+        --muni-shadow:none;
+        --muni-shadow-md:none;
+        --muni-shadow-lg:none;
+        --muni-ring:none;
+        --muni-glow:none;
+        /* Los dos tonos de texto «sobre superficie oscura» del tema. En papel no
+           hay superficie oscura: pasan a los de la hoja. Sin esto, la etiqueta
+           del KPI en oscuro (`--mg-sb-mut`, #7ea3a3) saldría a 2,9:1 sobre blanco.
+           La barra lateral, que es su otro uso, no se imprime. */
+        --mg-sb-txt:var(--muni-text);
+        --mg-sb-mut:var(--muni-muted);
+        /* En papel la placa vuelve a blanco. Texto 21:1. */
+        --muni-logo-plate:#ffffff;
+        --muni-logo-plate-fg:#000000;
+    }
+
+    /* El papel es blanco aunque el panel pinte el suyo. */
+    /* OJO CON LA ESPECIFICIDAD, que acá decide si el documento sale legible.
+       `body` puntúa 0,0,1; `.dark .fi-body` de este mismo archivo puntúa 0,2,0, y
+       ambas llevan `!important`, así que gana la segunda: en tema oscuro el papel
+       conservaba el fondo del panel con el texto forzado a negro encima. Medido:
+       65 de 386 textos bajo umbral, el peor en 1,12:1, y entre el 52 y el 56 % de
+       la hoja cubierta de tinta. Por eso se nombran aquí los mismos contenedores
+       del panel: para empatar la especificidad y ganar por orden.
+       Hoy esas reglas oscuras ya leen `--muni-bg` y `--muni-surface`, que el bloque
+       de arriba deja en blanco, así que el papel gana también sin esta lista. Se
+       conserva porque `html` y `body` la necesitan igual y porque cuesta cero. */
+    html,
+    body,
+    .dark .fi-body,
+    .dark .fi-main-ctn,
+    .dark .fi-main,
+    .dark .fi-section,
+    .dark .fi-wi,
+    .dark .fi-wi-stats-overview-stat{
+        background:#ffffff !important;
+        background-color:#ffffff !important;
+        color:var(--muni-text) !important;
+    }
+
+    /* CROMO DE PANTALLA: nada de esto es el documento. Se fuerza porque varios
+       de estos nodos traen su `display` en el atributo `style`, y un estilo en
+       línea le gana a cualquier hoja que no lo haga. `[data-muni-imprimir]` es
+       la salida para lo que hay que imprimir desde dentro de un diálogo.
+       `.fi-sidebar`, `.fi-topbar` y `.fi-modal` son el cromo propio del panel,
+       que en `muni-ui.css` no existe. */
+    .muni-skip-link,
+    .muni-sb,
+    .muni-topbar,
+    .muni-ds__top,
+    .muni-ds__burger,
+    .muni-toast,
+    .muni-no-print,
+    [data-muni-no-print],
+    .fi-sidebar,
+    .fi-topbar,
+    .fi-sidebar-open-btn,
+    .fi-sidebar-close-btn,
+    [role="dialog"][aria-modal="true"]:not([data-muni-imprimir]){
+        display:none !important;
+    }
+
+    /* La barra superior pública no tiene clase propia: se la reconoce por el
+       `position:sticky` que emite en línea. */
+    header[style*="position:sticky"]{
+        display:none !important;
+    }
+
+    /* Los márgenes de la hoja los pone `@page`; el relleno del armazón y del
+       panel sumaría una segunda banda en blanco. */
+    .muni-ds__main,
+    .fi-main{
+        padding:0 !important;
+    }
+
+    /* Y no solo esos dos: dentro del panel la hoja cuelga de una página de
+       Filament con su propio relleno, y un recurso puede envolverla en una
+       sección más. Atado a una lista fija de clases, el reset no existe para el
+       envoltorio que no esté enumerado: el relleno sobrevive a la impresión,
+       estrecha el documento en cada hoja y lo descuadra respecto de `@page`.
+       Se anula el relleno de CUALQUIER ancestro de la hoja.
+
+       Regla aparte a propósito: un selector no soportado invalida la LISTA
+       entera, y un motor sin `:has()` se quedaría también sin el reset de
+       arriba, que hoy sí funciona. */
+    :has(.muni-hoja){
+        padding:0 !important;
+    }
+
+    /* ── IMPRESIÓN PLANA: OPT-IN DEL SISTEMA ANFITRIÓN ───────────────────────
+       Todo lo de arriba redefine tokens `--muni-*`. El contenido propio de
+       Filament no los lee: elige un tono de su propia paleta. Medido con el CSS
+       real del panel de licencias, en oscuro y con `media=print`, el aviso
+       (`fi-callout`) salía así sobre el papel:
+
+         .fi-callout-heading      var(--color-white) → #ffffff → 1,00:1
+         .fi-callout-description  var(--gray-400)    → #9f9fa9 → 2,62:1
+         .fi-header-subheading    var(--gray-400)    → #9f9fa9 → 2,62:1
+
+       (Sobre el papel, porque los fondos NO se imprimen por omisión: el recuadro
+       oscuro del aviso desaparece y el texto blanco queda sobre la hoja.)
+
+       Son 218 clases de Filament con su gris horneado. Enumerarlas es una lista
+       que caduca con la próxima versión del panel — ya pasó con
+       `.dark .fi-header-heading`. La única regla que las alcanza a todas sin
+       nombrar ninguna es esta: forzar el color de TODO lo que cuelga de `.dark`.
+
+       QUÉ GANA quien la activa: el contenido del panel sale legible en papel
+       desde el modo oscuro, sin tocar el sistema anfitrión. Los tres de arriba
+       pasan a 21,00:1.
+
+       QUÉ PIERDE: el texto de Filament pierde su color de estado en papel. Un
+       aviso de error, una insignia de rechazo o un enlace se imprimen en negro,
+       como el resto. El estado sigue existiendo en el borde y en el texto —que
+       es lo que esta hoja imprime a propósito, ver arriba—, pero ya no en el
+       color de la letra. Por eso va apagado por omisión: imponérselo a los nueve
+       sistemas sería decidir por ellos.
+
+       LO QUE NO CUBRE: solo toca el color del texto, no el fondo. Filament pinta
+       el recuadro del aviso con su propio gris (`.fi-callout:where(.dark,.dark *)`
+       → #18181b) y ese fondo tampoco lee un token `--muni-*`. Por omisión da
+       igual —la impresora no imprime fondos—, pero si el funcionario enciende
+       «gráficos de fondo» en el diálogo, ese recuadro concreto sale negro con el
+       texto ya aplanado a negro encima: medido, 1,19:1. Sin el activador ese
+       mismo escenario ya salía roto por otro lado (título blanco sobre relleno
+       blanco, 1,00:1), así que el saldo con fondos es el mismo —2 de 14 elementos
+       bajo 4,5:1 en ambos casos— y sin fondos pasa de 6 bajo umbral a ninguno.
+       Cerrarlo del todo pediría aplanar también el fondo, que es otra decisión:
+       se llevaría por delante el cinturón institucional y el relleno del botón
+       primario. No se toma aquí.
+
+       CÓMO SE ACTIVA: el atributo booleano (sin valor) en el mismo elemento que
+       lleva `.dark`, o en un ancestro suyo. En un panel Filament es el <html>:
+
+           <html class="fi dark" data-muni-print-plain>
+
+       Filament no expone ningún hook para añadir atributos al <html>, así que el
+       anfitrión publica `filament-panels::components.layout.base` y lo edita.
+       NO con un script en línea desde un render hook: el panel va con CSP y
+       nonce, y un script sin nonce no se ejecuta ni avisa. Ver
+       `docs/UPGRADE-0.18.0.md`.
+
+       El nombre entra en la familia `print` de esta hoja (`data-muni-no-print`)
+       y es de raíz como `data-muni-theme`. NO se llama `data-muni-imprimir-…`
+       a propósito: `[data-muni-imprimir]` ya existe unas líneas más arriba y
+       significa otra cosa —una excepción por elemento, para imprimir desde
+       dentro de un diálogo—, y dos atributos con el mismo prefijo y sentidos
+       opuestos se confunden al leer el HTML.
+
+       Las dos formas del selector son necesarias: el panel pone `.dark` y el
+       activador en el MISMO <html>, y un elemento no es descendiente de sí
+       mismo; pero hay hosts que ponen `.dark` en el <body>.
+
+       El `!important` no es decorativo: las reglas de Filament vienen como
+       `.fi-callout .fi-callout-heading:where(.dark,.dark *)`, que puntúa 0,2,0,
+       lo mismo que esta. Sin `!important` gana la que va después, y el orden de
+       las dos hojas lo decide el anfitrión.
+
+       El color sale de `--muni-text`, que el bloque de tokens de arriba deja en
+       negro: si algún día ese reset cambia, este aplanado lo sigue. */
+    [data-muni-print-plain] .dark,
+    [data-muni-print-plain] .dark *,
+    .dark[data-muni-print-plain],
+    .dark[data-muni-print-plain] *{
+        color:var(--muni-text) !important;
+    }
+}

@@ -1,0 +1,55 @@
+# Las actualizaciones entran por `develop`, no por `main`: el flujo de este
+# ecosistema es develop → main y una PR de dependabot contra main se lo salta,
+# llegando a producción sin pasar por la rama de integración.
+version: 2
+updates:
+  - package-ecosystem: composer
+    target-branch: develop
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dependencias-menores:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    target-branch: develop
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  # El frontend también envejece: sin esto, «motion», Vite y las herramientas de
+  # prueba se quedaban atrás sin que nadie lo notara, que es como se llega a una
+  # actualización imposible de hacer en un solo salto.
+  - package-ecosystem: npm
+    target-branch: develop
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dependencias-menores:
+        update-types: [minor, patch]
+
+  # Las pruebas de punta a punta tienen su propio package.json: Playwright y
+  # axe-core viven ahí, y axe desactualizado significa dejar de detectar
+  # problemas de accesibilidad que ya se sabe detectar.
+  - package-ecosystem: npm
+    target-branch: develop
+    directory: "/e2e"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+
+  # La imagen base también: una versión de PHP sin parchear es una vulnerabilidad
+  # con fecha, no una molestia de mantenimiento.
+  - package-ecosystem: docker
+    target-branch: develop
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+

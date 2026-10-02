@@ -1,0 +1,147 @@
+/*
+ * Landing pública — hoja raíz (entry de Vite `resources/css/sitio.css`).
+ *
+ * ESTE ARCHIVO NO HORNEA LA PALETA DE NINGUNA ENTIDAD. Declara un contrato de
+ * primitivos por ROL (`--marca-*`) y trae escrita la paleta `neutra` del
+ * scaffold, que no es de nadie. `tools/usar-paquete-compartido.php` reemplaza
+ * el bloque entre los dos marcadores por la paleta del `--shared` con que se
+ * generó el proyecto, leída de `tools/paletas-de-entidad.php`. Un proyecto
+ * municipal con la paleta de otra entidad —o al revés— es exactamente lo que
+ * el CLAUDE.md del ecosistema prohíbe, y por eso el contraste y la identidad
+ * los vigila `PaletaDelSitioSigueLaEntidadTest`.
+ *
+ * POR QUÉ NO SE IMPORTA EL CSS DEL PAQUETE: el stage `assets` del Dockerfile
+ * construye sin `vendor/` ni `public/`; un `@import` a cualquiera de los dos
+ * compila en desarrollo y revienta la imagen de producción.
+ *
+ * SIN JAVASCRIPT: esta hoja es lo único que carga la landing. El modo oscuro
+ * sigue `prefers-color-scheme`; no hay conmutador porque el patrón sin
+ * parpadeo exige un <script> en línea que la política de contenido no quiere.
+ */
+@import 'tailwindcss' source(none);
+
+@source '../views/sitio';
+@source '../views/components/sitio';
+
+/* ── Primitivos de la entidad ─────────────────────────────────────────────
+   20 tokens, todos obligatorios (contrato en tools/paletas-de-entidad.php).
+   El bloque entre marcadores lo reescribe el generador. NO editar a mano. */
+/* PRIMITIVOS-DE-LA-ENTIDAD */
+:root {
+    --marca-acento: #3c4d5c;
+    --marca-acento-profundo: #1b2429;
+    --marca-acento-claro: #a3c2d6;
+    --marca-realce: #9dc37c;
+    --marca-realce-claro: #c2dfa6;
+    --marca-aviso: #f0c674;
+    --marca-progreso: #c2662f;
+    --marca-tinta: #1f2529;
+    --marca-tinta-profunda: #101619;
+    --marca-atenuado: #5b666e;
+    --marca-fondo: #f4f5f6;
+    --marca-papel: #eff1f3;
+    --marca-papel-2: #e7eaed;
+    --marca-borde: #d8dde1;
+    --marca-borde-2: #bcc4ca;
+    --marca-barra-texto: #d5dde2;
+    --marca-fondo-oscuro: #0c1013;
+    --marca-superficie-oscura: #161c20;
+    --marca-superficie-oscura-2: #11161a;
+    --marca-superficie-oscura-3: #1e262b;
+}
+/* FIN-PRIMITIVOS-DE-LA-ENTIDAD */
+
+/* ── Semánticos, modo CLARO ───────────────────────────────────────────────
+   Medidos sobre blanco y sobre `--marca-fondo`: texto ≥ 4,5:1, UI ≥ 3:1,
+   para las tres paletas (PaletaDelSitioSigueLaEntidadTest). */
+:root {
+    color-scheme: light;
+
+    --sitio-texto: var(--marca-tinta);
+    --sitio-atenuado: var(--marca-atenuado);
+    --sitio-lienzo: var(--marca-fondo);
+    --sitio-superficie: #ffffff;
+    --sitio-superficie-2: var(--marca-papel);
+    --sitio-borde: var(--marca-borde);
+    --sitio-borde-2: var(--marca-borde-2);
+    --sitio-acento: var(--marca-acento);
+    --sitio-acento-profundo: var(--marca-acento-profundo);
+    /* Hover de un botón con texto claro/oscuro según el modo: necesita un fondo que contraste en los dos. */
+    --sitio-acento-fuerte: var(--marca-acento-profundo);
+    --sitio-sobre-acento: #ffffff;
+    --sitio-foco: var(--marca-acento);
+    --sitio-barra-texto: #eaf5f3;
+    --sitio-barra-texto-suave: var(--marca-barra-texto);
+}
+
+/* ── Semánticos, modo OSCURO (solo por prefers-color-scheme) ──────────────
+   Medidos sobre `--marca-superficie-oscura`: texto #eaf5f3 ≥ 15:1,
+   atenuado #94a3b8 ≥ 6:1, acento claro ≥ 4,5:1 en las tres paletas. */
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+
+        --sitio-texto: #eaf5f3;
+        --sitio-atenuado: #94a3b8;
+        --sitio-lienzo: var(--marca-fondo-oscuro);
+        --sitio-superficie: var(--marca-superficie-oscura);
+        --sitio-superficie-2: var(--marca-superficie-oscura-2);
+        --sitio-borde: #1c343a;
+        --sitio-borde-2: #2a4a52;
+        --sitio-acento: var(--marca-acento-claro);
+        --sitio-acento-profundo: var(--marca-acento-profundo);
+        /* Hover de un botón con texto claro/oscuro según el modo: necesita un fondo que contraste en los dos. */
+        --sitio-acento-fuerte: var(--marca-realce-claro);
+        --sitio-sobre-acento: var(--marca-tinta-profunda);
+        --sitio-foco: var(--marca-acento-claro);
+    }
+}
+
+/*
+ * `@theme inline` y no `@theme`: las utilidades deben emitir `var(--sitio-*)`
+ * tal cual, para que cambien con el `@media` de arriba. Con `@theme` a secas
+ * Tailwind resolvería el valor una vez y el modo oscuro no se aplicaría.
+ */
+@theme inline {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --color-tinta: var(--sitio-texto);
+    --color-atenuado: var(--sitio-atenuado);
+    --color-lienzo: var(--sitio-lienzo);
+    --color-superficie: var(--sitio-superficie);
+    --color-superficie-2: var(--sitio-superficie-2);
+    --color-borde: var(--sitio-borde);
+    --color-borde-2: var(--sitio-borde-2);
+    --color-acento: var(--sitio-acento);
+    --color-acento-profundo: var(--sitio-acento-profundo);
+    --color-acento-fuerte: var(--sitio-acento-fuerte);
+    --color-sobre-acento: var(--sitio-sobre-acento);
+    --color-foco: var(--sitio-foco);
+    --color-barra-texto: var(--sitio-barra-texto);
+    --color-barra-texto-suave: var(--sitio-barra-texto-suave);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+    }
+
+    /* Anillo de foco visible siempre (WCAG 2.4.7 / 2.4.11): 2 px del color de
+       foco más 2 px de separación en el color del lienzo, para que se vea
+       sobre cualquier fondo de la página. */
+    :focus-visible {
+        outline: 2px solid var(--sitio-foco);
+        outline-offset: 2px;
+    }
+
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+}

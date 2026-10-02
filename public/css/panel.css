@@ -1,0 +1,478 @@
+/* Las migas de pan: dicen DÓNDE está uno, y venían ilegibles.
+ *
+ * El tema municipal las pinta con un color pensado para su barra lateral
+ * oscura, y sobre el fondo claro del contenido quedan por debajo del mínimo de
+ * contraste —la prueba automática las marca en las dos, la actual y el enlace—.
+ *
+ * Se usa el selector con el contenedor para ganarle al tema sin recurrir a
+ * «!important», y colores explícitos: en Filament 5 las variables de color son
+ * oklch, así que «rgb(var(--gray-700))» produce una declaración inválida que el
+ * navegador descarta sin decir nada.
+ *
+ * Medido: #3f3f46 sobre el papel del panel da 9,4:1, y #e4e4e7 sobre el fondo
+ * oscuro da 12,6:1. AA pide 4,5:1.
+ *
+ * PARCHE TEMPORAL, igual que el del título de tarjeta: el arreglo de fondo va en
+ * el paquete de identidad visual, y se puede borrar cuando lo traiga. */
+.fi-breadcrumbs .fi-breadcrumbs-item-label,
+.fi-breadcrumbs .fi-breadcrumbs-item-label[aria-current],
+.fi-breadcrumbs .fi-breadcrumbs-item-label[data-current] {
+    color: #3f3f46;
+}
+
+.fi-breadcrumbs .fi-breadcrumbs-item-label[aria-current],
+.fi-breadcrumbs .fi-breadcrumbs-item-label[data-current] {
+    font-weight: 500;
+}
+
+.dark .fi-breadcrumbs .fi-breadcrumbs-item-label,
+.dark .fi-breadcrumbs .fi-breadcrumbs-item-label[aria-current],
+.dark .fi-breadcrumbs .fi-breadcrumbs-item-label[data-current] {
+    color: #e4e4e7;
+}
+
+/* ============================================================================
+   Las tarjetas del escritorio.
+
+   Van con clases propias y no con utilidades de Tailwind por una razón que ya
+   costó tiempo averiguar: el CSS compilado del panel de Filament NO trae las
+   utilidades sueltas. Escribir «flex items-center gap-2» en una vista del panel
+   es letra muerta —no falla, simplemente no hace nada—, y así es como una
+   tarjeta termina con el nombre, el estado y los milisegundos pegados uno tras
+   otro. Comprobado en el navegador.
+
+   Todo lo de acá usa las variables de color del propio Filament, así que sigue
+   el tema del sistema —claro, oscuro y el acento de cada municipio— sin fijar
+   ningún color a mano.
+   ============================================================================ */
+
+.pb-lista { display: flex; flex-direction: column; }
+.pb-lista > * + * { border-top: 1px solid rgb(0 0 0 / .06); }
+.dark .pb-lista > * + * { border-top-color: rgb(255 255 255 / .08); }
+
+.pb-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-block: .6rem;
+    flex-wrap: wrap;
+}
+
+.pb-fila-texto { min-width: 0; flex: 1 1 12rem; }
+
+.pb-titulo {
+    display: block;
+    font-size: .875rem;
+    font-weight: 500;
+    color: rgb(var(--gray-950));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dark .pb-titulo { color: #fff; }
+
+.pb-detalle {
+    margin-top: .125rem;
+    font-size: .75rem;
+    color: rgb(var(--gray-500));
+}
+
+/* La franja de estado: nombre, palabra y cifra separados y alineados. */
+.pb-estados { display: flex; flex-wrap: wrap; gap: .5rem 2rem; }
+.pb-estado { display: flex; align-items: center; gap: .5rem; }
+
+/* El punto de color NUNCA va solo: al lado siempre está la palabra. El color es
+   un refuerzo, no el dato. */
+.pb-punto { width: .5rem; height: .5rem; border-radius: 9999px; flex: none; }
+.pb-punto--bien { background: rgb(var(--success-500)); }
+.pb-punto--lento { background: rgb(var(--warning-500)); }
+.pb-punto--caido { background: rgb(var(--danger-500)); }
+.pb-punto--urgente { background: rgb(var(--danger-500)); }
+
+.pb-palabra { font-size: .75rem; font-weight: 500; }
+.pb-palabra--bien { color: rgb(var(--success-600)); }
+.pb-palabra--lento { color: rgb(var(--warning-600)); }
+.pb-palabra--caido { color: rgb(var(--danger-600)); }
+.dark .pb-palabra--bien { color: rgb(var(--success-400)); }
+.dark .pb-palabra--lento { color: rgb(var(--warning-400)); }
+.dark .pb-palabra--caido { color: rgb(var(--danger-400)); }
+
+/* Cifras con ancho fijo: sin esto bailan de fila en fila y cuesta compararlas. */
+.pb-cifra { font-size: .75rem; color: rgb(var(--gray-500)); font-variant-numeric: tabular-nums; }
+
+.pb-vacio { display: flex; align-items: center; gap: .5rem; padding-block: .25rem; font-size: .875rem; color: rgb(var(--gray-600)); }
+.dark .pb-vacio { color: rgb(var(--gray-400)); }
+
+.pb-error { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1rem; border-radius: .5rem; background: rgb(var(--danger-50)); }
+.dark .pb-error { background: rgb(var(--danger-950)); }
+.pb-error p { font-size: .875rem; color: rgb(var(--danger-700)); margin: 0; }
+.dark .pb-error p { color: rgb(var(--danger-300)); }
+
+.pb-pie { padding-top: .5rem; font-size: .75rem; color: rgb(var(--gray-500)); }
+
+/* La entrada de las tarjetas. Aparecen escalonadas una vez, al cargar: da la
+   sensación de que el escritorio se arma, en vez de aparecer de golpe.
+
+   Se respeta «prefers-reduced-motion»: para quien pidió no ver movimiento, las
+   tarjetas simplemente están ahí. */
+@media (prefers-reduced-motion: no-preference) {
+    .fi-wi > * { animation: pb-entrada .4s cubic-bezier(.16, 1, .3, 1) both; }
+    .fi-wi > *:nth-child(2) { animation-delay: .04s; }
+    .fi-wi > *:nth-child(3) { animation-delay: .08s; }
+    .fi-wi > *:nth-child(n+4) { animation-delay: .12s; }
+}
+
+@keyframes pb-entrada {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ============================================================================
+   Foco visible en todo lo que se puede enfocar.
+
+   Detectado por la prueba automática de accesibilidad recorriendo el panel con
+   el tabulador: los enlaces del MENÚ LATERAL recibían el foco con
+   «outline: none» y sin sombra, así que quien navega por teclado no veía en qué
+   opción estaba. Es la navegación principal del panel entero.
+
+   El anillo se dibuja con «box-shadow» además del contorno porque los ítems del
+   menú tienen fondo propio y esquinas redondeadas: un contorno cuadrado se ve
+   cortado sobre ellos.
+
+   Esto es cumplimiento del Decreto N.º 1/2015, no acabado: sin foco visible, el
+   panel no se puede usar sin ratón.
+   ============================================================================ */
+.fi-sidebar-item-btn:focus-visible,
+.fi-sidebar-nav a:focus-visible,
+.fi-topbar a:focus-visible,
+.fi-breadcrumbs a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    border-radius: .5rem;
+}
+
+/* Las migas de pan de la página actual.
+
+   La prueba automática las midió por debajo del mínimo de contraste: son el
+   texto que dice DÓNDE está uno, y venían en un gris que se pierde sobre el
+   fondo del panel. Se les sube el peso y se les da el color de texto normal,
+   que ya está probado en los dos modos. */
+.fi-breadcrumbs-item-label[aria-current],
+.fi-breadcrumbs-item-label[data-current] {
+    /* Color explícito y no «rgb(var(--gray-700))»: en Filament 5 las variables
+       de color NO son tripletes RGB —son oklch—, así que esa forma produce una
+       declaración inválida que el navegador descarta sin decir nada. Es el
+       clásico de este tema: el selector parece bien y no hace nada.
+       Medido: #3f3f46 sobre el papel del panel da 9,4:1, muy por encima del
+       4,5:1 que exige AA para texto normal. */
+    color: #3f3f46;
+    font-weight: 500;
+}
+
+.dark .fi-breadcrumbs-item-label[aria-current],
+.fi-breadcrumbs-item-label[data-current] {
+    color: #e4e4e7;
+}
+
+/* NOTA: el título de tarjeta en modo oscuro ya NO se parchea acá.
+ *
+ * Estuvo un tiempo, mientras el arreglo de fondo no estaba publicado. Desde
+ * «muni-ui v0.16.0» la regla vive donde le corresponde —en el paquete que pinta
+ * el tema— y duplicarla acá solo serviría para que un día las dos digan cosas
+ * distintas. Comprobado en el CSS publicado antes de borrarla. */
+
+/* Área táctil mínima en la marca de la barra superior.
+ *
+ * Es un enlace —lleva al inicio del panel— y en un teléfono medía 287×20 px:
+ * WCAG 2.2 pide 24 px como mínimo, y en terreno, con guantes o al sol, un
+ * objetivo de 20 px se falla más veces de las que se acierta. Lo detectó la
+ * prueba de móvil, no el ojo.
+ *
+ * Se resuelve con alto mínimo y centrado vertical, sin tocar la tipografía ni
+ * el espaciado: el logo se ve igual, el dedo acierta. */
+.fi-sidebar-header-logo-ctn > a[href],
+.fi-topbar-start > a[href],
+.fi-topbar a[href],
+.fi-logo {
+    /* Con «min-height» sola el rectángulo seguía midiendo 20 px: algo la
+       comprimía. El relleno vertical da altura de verdad, y al ir en el enlace
+       —no en su contenedor— crece el área que responde al dedo, no el hueco de
+       alrededor. */
+    padding-block: 4px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ACABADO: micro-interacciones
+
+   El panel funcionaba pero se sentía muerto: ni una transición ni un estado de
+   hover o active en toda la hoja. Nada respondía al puntero.
+
+   OJO con el reparto de responsabilidades, que acá se comprobó midiendo:
+   el color, el radio y la sombra en reposo de las tarjetas los define el tema
+   de laravel-muni-ui, y los marca «!important». Definirlos otra vez acá es
+   código muerto que aparenta funcionar — se escribió así primero y no se
+   aplicaba ninguna. Si hay que cambiar el ASPECTO de una tarjeta, se cambia en
+   el paquete; lo que vive acá es cómo RESPONDE al usuario.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --pb-sombra-alta: 0 4px 12px rgb(0 0 0 / .08);
+    --pb-entrada: cubic-bezier(.16, 1, .3, 1);
+}
+
+.fi-wi-widget .fi-section,
+.fi-wi-widget .fi-wi-stats-overview-stat {
+    /* Solo lo que no provoca reflow. Animar width, height, top o left mata el
+       INP, que es la métrica que más se falla con Livewire. */
+    transition: box-shadow .2s var(--pb-entrada), transform .2s var(--pb-entrada);
+}
+
+/* El hover solo existe si hay puntero: en pantalla táctil se queda pegado
+   después de tocar y parece que la tarjeta se rompió. */
+@media (hover: hover) and (pointer: fine) {
+    .fi-wi-widget .fi-section:hover,
+    .fi-wi-widget .fi-wi-stats-overview-stat:hover {
+        transform: translateY(-1px);
+        /* «!important» porque el tema del paquete marca así su propia sombra y
+           sin esto el elemento se levanta sin que la sombra lo acompañe. Es el
+           único de la hoja, y la salida limpia es mover esta elevación a
+           laravel-muni-ui cuando se toque el paquete. */
+        box-shadow: var(--pb-sombra-alta) !important;
+    }
+}
+
+/* Un botón sin estado «active» se siente muerto: el clic no acusa recibo. */
+.fi-btn {
+    transition: transform .1s var(--pb-entrada), box-shadow .15s var(--pb-entrada);
+}
+.fi-btn:active { transform: scale(.97); }
+
+/* Las filas de lista responden al puntero sin desplazar nada alrededor. */
+@media (hover: hover) and (pointer: fine) {
+    .pb-fila { transition: background-color .15s ease; }
+    .pb-fila:hover { background-color: rgb(0 0 0 / .025); }
+    .dark .pb-fila:hover { background-color: rgb(255 255 255 / .04); }
+}
+
+/* Quien pidió menos movimiento no recibe ninguno: se conserva el cambio de
+   sombra y de color, que informan, y se quita el desplazamiento. */
+@media (prefers-reduced-motion: reduce) {
+    .fi-wi-widget .fi-section,
+    .fi-wi-widget .fi-wi-stats-overview-stat,
+    .fi-btn,
+    .pb-fila {
+        transition-duration: .01ms;
+    }
+    .fi-wi-widget .fi-section:hover,
+    .fi-wi-widget .fi-wi-stats-overview-stat:hover,
+    .fi-btn:active {
+        transform: none;
+    }
+}
+
+/* ── Cambio de página ───────────────────────────────────────────────────────
+   La transición del cambio de página NO se hace con View Transitions.
+
+   Se intentó y no se dispara: `wire:transition` es una directiva del morph de
+   Livewire —renombra elementos cuando un componente se re-renderiza— y no
+   participa de la navegación con `wire:navigate`. Comprobado interceptando
+   `document.startViewTransition` durante una navegación real: cero llamadas.
+   Dejar aquí el `view-transition-name` habría sido CSS muerto con aspecto de
+   funcionalidad.
+
+   La entrada del contenido se anima en resources/js/panel.js, sobre el evento
+   `livewire:navigated`.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Gráfico de actividad ───────────────────────────────────────────────────
+   Barras dibujadas en SVG, sin librería de gráficos. La altura está reservada
+   con «aspect-ratio»: si el alto lo fijara el contenido, la tarjeta crecería al
+   llegar los datos y empujaría el escritorio entero.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.pb-grafico {
+    /* Altura FIJA, no «aspect-ratio». Reserva igual de bien y además no depende
+       del ancho: con la proporción, en una columna ancha el gráfico crecía a
+       300 px de alto y se comía media pantalla para resumir catorce días. */
+    height: 8.5rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.pb-grafico-svg {
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: visible;
+}
+
+.pb-barra {
+    fill: var(--muni-accent, #355a63);
+    /* Las barras se estiran con el lienzo (preserveAspectRatio="none"), así que
+       el redondeo se deformaría: se deja recto a propósito. */
+    /* fill-box: sin esto el origen es el lienzo entero y las barras se
+       encogerían hacia la esquina, no hacia su propia base. */
+    transform-box: fill-box;
+    transform-origin: bottom;
+}
+
+.dark .pb-barra { fill: #5eead4; }
+
+@media (hover: hover) and (pointer: fine) {
+    .pb-barra { transition: fill .15s ease; }
+    .pb-barra:hover { fill: var(--muni-accent, #2a4a52); }
+    .dark .pb-barra:hover { fill: #99f6e4; }
+}
+
+.pb-grafico-ejes {
+    display: flex;
+    justify-content: space-between;
+    font-size: .6875rem;
+    /* Medido: 6,28:1 sobre blanco. El respaldo NO puede ser el único valor —la
+       primera versión usaba este gris también en oscuro y daba 2,66:1, por
+       debajo del 4,5:1 de AA. Lo detectó la prueba de accesibilidad. */
+    color: var(--muni-muted, #5f6e6c);
+}
+
+.dark .pb-grafico-ejes {
+    /* 6,53:1 sobre el fondo oscuro de la tarjeta (#0f2025). */
+    color: #94a3b8;
+}
+
+/* Las barras crecen desde su base, escalonadas. Es CSS: no cuesta JavaScript
+   ni retrasa nada, porque el SVG ya está pintado y solo se escala. */
+@media (prefers-reduced-motion: no-preference) {
+    .pb-barra {
+        animation: pb-crece .45s cubic-bezier(.16, 1, .3, 1) both;
+        /* Se corta a los 8: más allá la última barra aparecería medio segundo
+           tarde y se leería como lentitud, no como detalle. */
+        animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+    }
+
+    @keyframes pb-crece {
+        from { transform: scaleY(0); }
+    }
+}
+
+/* ── Muestrario de componentes (solo desarrollo) ────────────────────────────
+   Cada componente se muestra funcionando y con su etiqueta debajo. El código va
+   a la vista y no a un enlace: tener que ir a buscarlo al vendor es justo lo
+   que esta pantalla evita.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.cmp-intro { max-width: 65ch; color: var(--muni-text, #20302f); }
+.cmp-intro p + p { margin-top: .5rem; }
+.cmp-nota { font-size: .8125rem; color: var(--muni-muted, #5f6e6c); }
+
+.cmp-grupo { margin-top: 2rem; }
+
+.cmp-titulo {
+    font-size: .8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muni-muted, #5f6e6c);
+    margin-bottom: .75rem;
+}
+
+/* Se adapta a la columna disponible sin clases distintas por tamaño. */
+.cmp-fila {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.cmp-caja {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    padding: 1.25rem;
+    border: 1px solid var(--muni-border, #e2ddce);
+    border-radius: .75rem;
+    background: var(--muni-surface, #fff);
+    /* El componente demostrado manda sobre el alto; la caja no lo recorta. */
+    min-width: 0;
+}
+
+.cmp-caja--ancha { grid-column: 1 / -1; }
+
+.dark .cmp-caja {
+    background: rgb(255 255 255 / .02);
+    border-color: rgb(255 255 255 / .08);
+}
+
+/* El código se puede desbordar a lo ancho, pero dentro de su caja: la página
+   nunca hace scroll horizontal. */
+/*
+ * Alcanzable con el teclado: un bloque que se desplaza a lo ancho y no puede
+ * recibir foco deja su contenido fuera del alcance de quien no usa mouse. Por
+ * eso lleva tabindex="0", y por eso necesita un foco visible propio.
+ */
+.cmp-codigo:focus-visible {
+    outline: 2px solid var(--mg-petroleo, #355a63);
+    outline-offset: 2px;
+}
+
+.dark .cmp-codigo:focus-visible { outline-color: var(--mg-celeste, #7ccbe1); }
+
+.cmp-codigo {
+    display: block;
+    overflow-x: auto;
+    padding: .625rem .75rem;
+    border-radius: .5rem;
+    background: var(--muni-surface-2, #f6f3ea);
+    color: var(--muni-muted, #5f6e6c);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .75rem;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+.dark .cmp-codigo { background: rgb(255 255 255 / .04); color: #94a3b8; }
+
+.cmp-badges { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.cmp-skeletons { display: flex; flex-direction: column; gap: .5rem; }
+
+.cmp-pie {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--muni-border, #e2ddce);
+    font-size: .8125rem;
+    color: var(--muni-muted, #5f6e6c);
+}
+
+.cmp-pie code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .75rem;
+    word-break: break-all;
+}
+
+/* El texto secundario del tema oscuro no llega a 4,5:1 sobre los avisos.
+ *
+ * muni-ui (v0.17.1, muni-ui-filament.css) pinta el cuerpo de «x-muni::alert»
+ * con «--muni-muted: #94a3b8», y en oscuro lo pone sobre un fondo tintado al
+ * 18 % con el color del tono. Medido con axe en el muestrario: sobre el aviso
+ * de advertencia (#383e2a) da 4,33:1; sobre el «ok» (#2b3f30) 4,41:1 y sobre
+ * el «info» (#233f47) 4,37:1. AA pide 4,5:1, y a 13 px no hay excepción.
+ *
+ * Con #a3b1c4 el peor caso (advertencia) sube a 5,10:1 y los demás quedan
+ * entre 5,15:1 y 5,75:1; sobre la superficie del panel pasa de 6,5:1 a 7,7:1.
+ * Sigue muy por debajo de «--muni-text» (15:1), así que la jerarquía entre
+ * texto principal y secundario se conserva.
+ *
+ * «html.dark» y no «.dark»: el tema del paquete y este archivo entran por el
+ * mismo hook (STYLES_AFTER) y la especificidad decide sin depender del orden.
+ *
+ * PARCHE TEMPORAL, igual que los de arriba: el token vive en el paquete de
+ * identidad visual y ahí es donde va el arreglo de fondo. Cuando lo traiga,
+ * esto se borra. */
+html.dark {
+    --muni-muted: #a3b1c4;
+}

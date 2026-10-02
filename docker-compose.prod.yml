@@ -1,0 +1,91 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Override de PRODUCCIÓN — Sistemas Municipales Boilerplate
+# ──────────────────────────────────────────────────────────────────────────────
+services:
+  app:
+    restart: unless-stopped
+    # Este archivo es del scaffold: no hay un nombre de imagen real que deducir
+    # (cada proyecto generado publica en su propio ghcr.io/<org>/<repo>, ver
+    # .github/workflows/desplegar.yml). Sin APP_IMAGE el compose falla explícito
+    # en vez de intentar bajar un placeholder que no existe.
+    image: ${APP_IMAGE:?APP_IMAGE sin definir}
+    pull_policy: always
+    user: "root"
+    entrypoint: ["/app/docker/docker-entrypoint.prod.sh"]
+    # Solo loopback: README-despliegue.md dice «no abre puertos, el sitio queda
+    # detrás del ingress». Publicado en "0.0.0.0" (o sin IP, que es lo mismo),
+    # sin firewall en el VPS el HTTP plano queda accesible saltándose el TLS del
+    # ingress, y con SESSION_SECURE_COOKIE=true el síntoma es «no puedo entrar»
+    # sin que nada explique por qué.
+    ports: !override
+      - "127.0.0.1:8000:8000"
+    volumes: !override
+      - ./.env:/app/.env.host:ro   # el entrypoint lo copia a /app/.env con el dueño correcto
+      - recordatorios_storage:/app/storage
+    environment:
+      - APP_ENV=production
+      # El base apunta XDG_* a /tmp/caddy-*, que www-data no puede crear.
+      # El Dockerfile crea /data y /config con dueño www-data: hay que usarlos.
+      - XDG_DATA_HOME=/data
+      - XDG_CONFIG_HOME=/config
+      - APP_DEBUG=false
+      - APP_URL=${APP_URL}
+      - DB_PASSWORD=${DB_PASSWORD}
+      # `octane:start` recibe --server=frankenphp por flag, pero `octane:reload`
+      # -que el despliegue corre después de migrar- lo lee de config/octane.php,
+      # cuyo defecto es roadrunner. Sin esto el reload muere buscando el rpcPort.
+      - OCTANE_SERVER=frankenphp
+
+  worker:
+    restart: unless-stopped
+    image: ${APP_IMAGE:?APP_IMAGE sin definir}
+    pull_policy: always
+    user: "root"
+    volumes: !override
+      - ./.env:/app/.env.host:ro   # el entrypoint lo copia a /app/.env con el dueño correcto
+      - recordatorios_storage:/app/storage
+    environment:
+      - APP_ENV=production
+      # El base apunta XDG_* a /tmp/caddy-*, que www-data no puede crear.
+      # El Dockerfile crea /data y /config con dueño www-data: hay que usarlos.
+      - XDG_DATA_HOME=/data
+      - XDG_CONFIG_HOME=/config
+      - APP_DEBUG=false
+      - DB_PASSWORD=${DB_PASSWORD}
+      # El worker comparte las cachés de configuración con app: mismo servidor.
+      - OCTANE_SERVER=frankenphp
+
+  db:
+    restart: unless-stopped
+    ports: !override []
+    environment:
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+
+  redis:
+    restart: unless-stopped
+    # El .env de producción trae un REDIS_PASSWORD aleatorio (lo genera
+    # secretos-graneros/bin/nuevo-proyecto.sh) y Laravel hace AUTH con él: un
+    # Redis sin `requirepass` responde «ERR AUTH <password> called without any
+    # password configured» y `migrate` muere. El base lo deja sin clave para
+    # desarrollo y pruebas; acá se exige.
+    #
+    # La clave viaja por la variable REDISCLI_AUTH y no por `${REDIS_PASSWORD}`
+    # dentro del `command`: interpolada, quedaría en el `Args` de `docker inspect`
+    # y en `ps`. `$$` evita que Compose la sustituya (la expande el shell del
+    # contenedor). REDISCLI_AUTH la lee también `redis-cli`, así que el
+    # healthcheck se autentica sin llevarla en la línea de comandos. Si falta en
+    # el .env, Compose falla explícito en vez de levantar Redis sin clave.
+    environment:
+      - REDISCLI_AUTH=${REDIS_PASSWORD:?REDIS_PASSWORD sin definir en .env}
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDISCLI_AUTH"']
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  recordatorios_storage:
+    name: recordatorios_storage

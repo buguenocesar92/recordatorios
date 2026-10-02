@@ -1,0 +1,22 @@
+{
+    "esquema": 1,
+    "scaffold": {
+        "commit": "e43e25bdc91c63a993e713601549fe44171ccf85",
+        "rama": "develop"
+    },
+    "generado_el": "2026-10-02T19:36:56+00:00",
+    "nombre": "recordatorios",
+    "slug": "recordatorios",
+    "entidad": "kraftdo",
+    "preset": "completo",
+    "frontend": "livewire",
+    "opcionales": {},
+    "puertos": {
+        "app": 8211,
+        "db": 8212
+    },
+    "herramientas": {
+        "php": "8.4.26",
+        "node": "v22.23.2"
+    }
+}

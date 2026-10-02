@@ -1,0 +1,184 @@
+services:
+  app:
+    container_name: recordatorios-app-frankenphp
+    mem_limit: 1g
+    mem_reservation: 400m
+    cpus: 2
+    restart: unless-stopped
+    user: "1000:1000"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Mismo secreto de BuildKit que consume el stage `vendor` del Dockerfile
+      # (`--mount=type=secret,id=composer_auth,required=false`) y que
+      # `desplegar.yml` pasa desde `secrets.COMPOSER_GH_TOKEN`. Aquí viene de
+      # un archivo local (ver el bloque `secrets:` al final del archivo: por
+      # defecto un placeholder vacío, o `auth.json` si se exporta
+      # `COMPOSER_AUTH_FILE`).
+      secrets:
+        - composer_auth
+    ports:
+      # Loopback por omisión. Sin IP, Docker publica en 0.0.0.0 y la app queda
+      # abierta a toda la red del equipo (pasó con un proyecto generado desde
+      # este scaffold: consola en 0.0.0.0:8095, visible en la LAN). Ni ufw
+      # protege: Docker inserta sus reglas por debajo de la cadena INPUT.
+      # Para abrirla a la tailnet, BIND_HOST=<IP de Tailscale de ESE equipo> en
+      # el .env. Nunca una IP fija como valor por omisión: si no existe en el
+      # equipo, Docker aborta con «cannot assign requested address».
+      - "${BIND_HOST:-127.0.0.1}:8211:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/up || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    environment:
+      - HOME=/tmp
+      - COMPOSER_HOME=/tmp/composer
+      - XDG_CONFIG_HOME=/tmp/caddy-config
+      - XDG_DATA_HOME=/tmp/caddy-data
+      - APP_URL=http://localhost:8211
+      - DB_CONNECTION=mariadb
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=sistema
+      - DB_USERNAME=sistema
+      - DB_PASSWORD=sistema_pass
+      - REDIS_HOST=redis
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    networks:
+      - recordatorios_network
+
+  worker:
+    container_name: recordatorios-app-worker
+    mem_limit: 512m
+    mem_reservation: 200m
+    cpus: 1
+    restart: unless-stopped
+    user: "1000:1000"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Mismo Dockerfile que `app`: si se construye este servicio antes (o
+      # sin caché compartida), necesita el mismo secreto que el stage
+      # `vendor`. Ver el comentario equivalente en el servicio `app`.
+      secrets:
+        - composer_auth
+    command: supervisord -n -c /etc/supervisord.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'queue:work' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    environment:
+      - HOME=/tmp
+      - COMPOSER_HOME=/tmp/composer
+      - XDG_CONFIG_HOME=/tmp/caddy-config
+      - XDG_DATA_HOME=/tmp/caddy-data
+      - APP_URL=http://localhost:8211
+      - DB_CONNECTION=mariadb
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=sistema
+      - DB_USERNAME=sistema
+      - DB_PASSWORD=sistema_pass
+      - REDIS_HOST=redis
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    networks:
+      - recordatorios_network
+
+  db:
+    container_name: recordatorios-app-mariadb
+    mem_limit: 1g
+    mem_reservation: 400m
+    cpus: 1
+    restart: unless-stopped
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: sistema
+      MARIADB_USER: sistema
+      MARIADB_PASSWORD: sistema_pass
+      MARIADB_ROOT_PASSWORD: root_pass
+    ports:
+      # Solo loopback: publicar el 3306 en 0.0.0.0 deja la base de DESARROLLO
+      # -con su clave conocida y datos reales de prueba- alcanzable desde
+      # cualquier equipo de la red en la que esté el portátil. Las herramientas
+      # locales (TablePlus, mariadb CLI) siguen conectando igual por 127.0.0.1;
+      # los otros contenedores no usan este puerto, hablan por la red de compose.
+      #
+      # Este es el SCAFFOLD: cada sistema nuevo nace copiando este archivo.
+      # El bind quedó en 0.0.0.0 (commit 39dc504, "acceso Tailscale") sin
+      # actualizar este comentario -que seguía diciendo "solo loopback"- y
+      # sin recrear el contenedor, así que no llegó a exponerse en este
+      # equipo. Pero de no corregirse acá, el próximo `scaffold new` propaga
+      # el defecto a cada sistema que nazca de esta plantilla.
+      # Acceso remoto desde el portátil: ssh -N -L 3308:127.0.0.1:3308 casa
+      - "127.0.0.1:8212:3306"
+    volumes:
+      - mariadb_recordatorios_data:/var/lib/mysql
+      # Bases de sistema_test/sistema_cobertura_test/sistema_mutacion_test que
+      # `make test`/`make cobertura`/`make mutacion` esperan encontrar ya creadas.
+      # MariaDB solo ejecuta estos scripts la PRIMERA vez que /var/lib/mysql está
+      # vacío: en un volumen ya inicializado (p. ej. este mismo checkout) hay que
+      # recrearlo (`docker compose down -v db && docker compose up -d db`) para
+      # que se apliquen.
+      - ./docker/mariadb-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - recordatorios_network
+
+  redis:
+    container_name: recordatorios-app-redis
+    mem_limit: 256m
+    mem_reservation: 100m
+    cpus: 0.5
+    restart: unless-stopped
+    image: redis:7-alpine
+    networks:
+      - recordatorios_network
+
+networks:
+  recordatorios_network:
+    driver: bridge
+
+volumes:
+  mariadb_recordatorios_data:
+    name: mariadb_recordatorios_data
+
+secrets:
+  # Credenciales de Composer para paquetes privados (p. ej.
+  # `kraftdo/laravel-kraftdo-shared` con `--shared=kraftdo`). Opcional: por
+  # defecto apunta a un archivo VACÍO versionado
+  # (`docker/composer-auth.placeholder`, 0 bytes, sin secretos) para que
+  # `docker compose build`/`up --build` nunca fallen por archivo ausente.
+  #
+  # Ojo: a diferencia de `env_file`, un secreto `file:` de Compose NO admite
+  # `required: false` — comprobado con un build real: si el archivo no
+  # existe, Compose falla ANTES de llegar a BuildKit («failed to stat ...: no
+  # such file or directory»), sin importar el `required=false` que sí acepta
+  # el `--mount=type=secret` del Dockerfile (ese es un mecanismo aparte, más
+  # abajo en la cadena). Por eso el archivo por defecto tiene que EXISTIR
+  # siempre — de ahí el placeholder versionado en vez de `./auth.json`
+  # directo, que en un clon nuevo no existe.
+  #
+  # Para paquetes privados, dos formas válidas de generar el archivo —el
+  # Dockerfile distingue el formato solo, por el primer carácter (`{` = JSON):
+  #   - `auth.json` completo: `composer config --auth github-oauth.github.com
+  #     <token>` (JSON: `{"github-oauth":{"github.com":"<token>"}}`).
+  #   - Token crudo en texto plano: el mismo valor que `desplegar.yml` pasa
+  #     como `secrets.COMPOSER_GH_TOKEN`, sin JSON alrededor.
+  # Cualquiera de los dos, ya lo ignora `.gitignore`/`.dockerignore` (nunca se
+  # hornea en la imagen); exportar `COMPOSER_AUTH_FILE=./auth.json` (o el
+  # nombre que se use) antes de construir. El `--mount=...,required=false` +
+  # `[ -s ... ]` del Dockerfile hacen el resto: contenido vacío → sin token;
+  # contenido real → lo usa, en el formato que sea.
+  composer_auth:
+    file: ${COMPOSER_AUTH_FILE:-./docker/composer-auth.placeholder}

@@ -1,0 +1,371 @@
+name: CI
+
+on:
+  # Ahorro de minutos: CI corre solo en push a main (gate final) y en PRs hacia
+  # main/develop. El push directo a develop NO gasta CI; se valida al abrir el PR
+  # a main (y con `make test` en local). Manual con workflow_dispatch.
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Pint + Pest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_DATABASE: sistema_test
+          MARIADB_USER: sistema
+          MARIADB_PASSWORD: sistema_pass
+          MARIADB_ROOT_PASSWORD: root_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: sistema_test
+      DB_USERNAME: sistema
+      DB_PASSWORD: sistema_pass
+      REDIS_HOST: 127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql, redis, gd, intl, zip, pcntl, bcmath, opcache
+          coverage: none
+          tools: composer:v2
+
+      # `ComandoNewTest.php` genera un proyecto real con `--frontend=inertia-react`
+      # dentro de la suite Pest (grupo «lento»): ese preset exige npm en el PATH
+      # para sincronizar package-lock.json, igual que el job «generado» de
+      # generador.yml. CI del PR #45: el Node que trae de fábrica ubuntu-latest
+      # no es el mismo que declara el Dockerfile (`FROM node:26-alpine`), y con
+      # uno viejo la sincronización del lock fallaba sin decir por qué —hoy ya
+      # lo dice, ver `tools/aplicar-frontend-inertia-react.php`—. Misma versión
+      # que el paso equivalente de generador.yml.
+      - name: Setup Node (lo necesita ComandoNewTest.php al generar con la consola)
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Cache de dependencias Composer
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Instalar dependencias
+        env:
+          COMPOSER_GH_TOKEN: ${{ secrets.COMPOSER_GH_TOKEN }}
+        run: |
+          # Con el token en blanco composer manda una autenticación inválida en cada
+          # descarga desde github.com y falla hasta con los paquetes públicos. En las
+          # PR de dependabot el secret llega vacío, así que va condicionado.
+          # --global: el token queda en el home del runner y no en un auth.json del árbol.
+          if [ -n "$COMPOSER_GH_TOKEN" ]; then
+              composer config --global github-oauth.github.com "$COMPOSER_GH_TOKEN"
+          else
+              echo "::notice::Sin COMPOSER_GH_TOKEN: solo se podrán bajar paquetes públicos."
+          fi
+          # `policy.advisories.block false`: composer se niega a instalar si
+          # alguna dependencia tiene un aviso de seguridad. Se desactiva a
+          # propósito para que el paso de INSTALAR no decida por su cuenta:
+          # quien decide es el paso «Auditoría de dependencias (composer
+          # audit)» de abajo, que bloquea y además dice cuál es el paquete.
+          # Sin esto, un aviso publicado anoche corta el pipeline con un
+          # error de composer que no explica nada.
+          composer config policy.advisories.block false
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Preparar entorno
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Verificar formato (Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Análisis estático (PHPStan nivel 8, sin baseline)
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Auditoría de dependencias (composer audit)
+        run: composer audit --no-dev --format=plain
+
+      - name: Migraciones
+        run: php artisan migrate --force
+
+      - name: Pest
+        run: php -d memory_limit=1G ./vendor/bin/pest
+
+  seguridad:
+    name: Trivy (vulnerabilidades)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # No bloquea el merge (Report-Only): reporta CVEs de deps/SO, secretos y
+    # malas configuraciones para revisarlos. Complementa composer audit.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Instalar Trivy
+        # Version fijada + verificacion de checksum. Antes esto ejecutaba un
+        # script traido de la rama main de aquasecurity/trivy sin fijar ni
+        # verificar nada, en un runner con secretos.
+        env:
+          TRIVY_VERSION: "0.74.0"
+        run: |
+          set -euo pipefail
+          cd "$(mktemp -d)"
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -sfLO "${base}/${tarball}"
+          curl -sfLO "${base}/trivy_${TRIVY_VERSION}_checksums.txt"
+          grep " ${tarball}$" "trivy_${TRIVY_VERSION}_checksums.txt" | sha256sum -c -
+          tar xzf "${tarball}" trivy
+          sudo install -m 0755 trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: Trivy filesystem scan
+        run: trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 --no-progress .
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # El continue-on-error va SOLO en el paso frágil (más abajo), no en el job.
+    # Puesto acá arriba absorbía TAMBIÉN el fallo del paso de accesibilidad, que
+    # declara continue-on-error: false: el job quedaba verde con WCAG roto, justo
+    # lo contrario de lo que promete el comentario de ese paso.
+
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_DATABASE: sistema_test
+          MARIADB_USER: sistema
+          MARIADB_PASSWORD: sistema_pass
+          MARIADB_ROOT_PASSWORD: root_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: sistema_test
+      DB_USERNAME: sistema
+      DB_PASSWORD: sistema_pass
+      REDIS_HOST: 127.0.0.1
+      APP_URL: http://localhost:8211
+      APP_ENV: testing
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql, redis, gd, intl, zip, pcntl, bcmath, opcache
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache de dependencias Composer
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Instalar dependencias PHP
+        env:
+          COMPOSER_GH_TOKEN: ${{ secrets.COMPOSER_GH_TOKEN }}
+        run: |
+          # Con el token en blanco composer manda una autenticación inválida en cada
+          # descarga desde github.com y falla hasta con los paquetes públicos. En las
+          # PR de dependabot el secret llega vacío, así que va condicionado.
+          # --global: el token queda en el home del runner y no en un auth.json del árbol.
+          if [ -n "$COMPOSER_GH_TOKEN" ]; then
+              composer config --global github-oauth.github.com "$COMPOSER_GH_TOKEN"
+          else
+              echo "::notice::Sin COMPOSER_GH_TOKEN: solo se podrán bajar paquetes públicos."
+          fi
+          # `policy.advisories.block false`: composer se niega a instalar si
+          # alguna dependencia tiene un aviso de seguridad. Se desactiva a
+          # propósito para que el paso de INSTALAR no decida por su cuenta:
+          # quien decide es el paso «Auditoría de dependencias (composer
+          # audit)» de abajo, que bloquea y además dice cuál es el paquete.
+          # Sin esto, un aviso publicado anoche corta el pipeline con un
+          # error de composer que no explica nada.
+          composer config policy.advisories.block false
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Preparar entorno Laravel
+        run: |
+          cp .env.example .env
+          # El E2E entra por el formulario de verdad, así que necesita ver el
+          # código del segundo factor. El «.env.example» lo trae apagado, que es
+          # lo correcto para cualquier instalación, y sin esto el paso que abre
+          # la sesión se queda esperando diez segundos un simulador que nunca
+          # aparece y ninguna prueba llega a correr. El runner es efímero: su
+          # base se crea y se tira dentro del mismo job.
+          sed -i 's/^MFA_SHOW_CODE=.*/MFA_SHOW_CODE=true/' .env
+          php artisan key:generate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/package-lock.json
+
+      - name: Instalar dependencias Frontend (Root)
+        run: npm ci
+
+      - name: Construir assets (Vite)
+        run: npm run build
+
+      - name: Migrar y poblar Base de Datos
+        run: php artisan migrate --force --seed
+
+      - name: Instalar dependencias E2E
+        run: npm ci
+        working-directory: e2e
+
+      # Los tipos, ANTES de bajar navegadores: es el paso más barato del job y
+      # caza el fallo que ninguna corrida detecta. `test.use({ reducedMotion })`
+      # estuvo semanas en el ecosistema sin hacer NADA: esa clave no existe en
+      # `PlaywrightTestOptions`, Playwright la registra como fixture desconocido
+      # y no la instancia jamás, sin error al cargar ni al ejecutar. Los paneles
+      # se escaneaban CON animación y el verde de accesibilidad mentía. `tsc` lo
+      # caza con TS2353. Bloquea a propósito: un candado que no falla no es un
+      # candado.
+      - name: Comprobación de tipos de los specs (tsc --noEmit)
+        run: npm run typecheck
+        working-directory: e2e
+
+      - name: Instalar navegadores Playwright
+        # `--with-deps` hace un `apt-get update` que arrastra TODAS las fuentes del
+        # runner, incluida la de Google Chrome que la imagen trae de fábrica. Ese
+        # índice falla a ratos con «Hash Sum mismatch» (Google lo republica sin
+        # sincronizar sus réplicas) y tumba el job aunque no usemos ese Chrome:
+        # Playwright trae su propio Chromium. Sacar la fuente antes de instalar
+        # deja el job dependiendo solo de los espejos de Ubuntu. Mismo fix que en
+        # discapacidad-graneros (commit 65e8a9b).
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*
+          npx playwright install --with-deps chromium
+        working-directory: e2e
+
+      # La accesibilidad se comprueba SIEMPRE y con su propio resultado, aparte
+      # del resto de las E2E: este paso NO lleva continue-on-error (y el job ya
+      # no lo lleva a nivel de job — antes lo absorbía a él también, con el
+      # workflow quedando verde aunque este paso fallara). En los sistemas del
+      # Estado chileno la accesibilidad no es acabado: el Decreto N.º 1/2015
+      # obliga a cumplir los estándares W3C, y de este repositorio nacen todos
+      # los sistemas del ecosistema. Un panel que no se puede usar por teclado,
+      # o con texto que no se lee, no debería llegar a main sin que nadie se
+      # entere.
+      #
+      # Se comprueba en los dos modos: el contraste en oscuro es donde más se
+      # rompe, y es invisible para quien desarrolla en claro.
+      # `--reporter=line,html`: el reporter de línea es el que se lee en el log,
+      # y el html es el que se sube como artefacto al final del job. Solo con
+      # `line` no se generaba `playwright-report/` y, cuando este paso fallaba,
+      # el paso de subida no encontraba nada: la captura y la traza del fallo se
+      # perdían justo en el único caso en que hacían falta.
+      - name: Accesibilidad (WCAG 2.2 AA, claro y oscuro)
+        id: accesibilidad
+        continue-on-error: false
+        run: npx playwright test accesibilidad --reporter=line,html
+        working-directory: e2e
+
+      # Estas SÍ son frágiles por naturaleza (rendimiento, interacción, móvil):
+      # dependen de tiempos reales. No bloquean el merge; la accesibilidad, arriba,
+      # ya corrió con su propio candado y ese sí bloquea.
+      - name: Ejecutar el resto de las E2E
+        continue-on-error: true
+        run: npm test
+        working-directory: e2e
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  #  Escáner de secretos — este SÍ bloquea.
+  #
+  #  El job de Trivy ya mira secretos, pero corre con `continue-on-error` y
+  #  `--exit-code 0`: informa y deja pasar. Un escáner que nunca falla no
+  #  impide que una credencial entre al repositorio, solo la documenta.
+  #
+  #  Se escanea el árbol Y el historial: un secreto borrado en un commit
+  #  posterior sigue estando en git y sigue siendo un secreto filtrado.
+  # ────────────────────────────────────────────────────────────────────────────
+  secretos:
+    name: Secretos (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # sin el historial completo, `gitleaks git` no ve nada
+
+      # Binario oficial en vez del action: el action de gitleaks pide licencia
+      # para organizaciones, y así la versión queda fijada y a la vista.
+      - name: Instalar gitleaks
+        env:
+          VERSION: 8.30.1
+        run: |
+          set -euo pipefail
+          curl -sL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Buscar credenciales en el árbol de trabajo
+        run: gitleaks dir . --no-banner --redact --config .gitleaks.toml
+
+      - name: Buscar credenciales en el historial
+        run: gitleaks git . --no-banner --redact --config .gitleaks.toml

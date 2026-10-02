@@ -1,0 +1,31 @@
+{
+  /*
+   * Comprobación estática de los specs de Playwright.
+   *
+   * Sin esto nada miraba los tipos de `e2e/`: `test.use({ reducedMotion })`
+   * estuvo semanas en el ecosistema sin hacer NADA —esa clave no existe en
+   * `PlaywrightTestOptions`, así que el runner la registra como fixture
+   * desconocido, no la instancia nunca y no avisa ni al cargar ni al correr—.
+   * Los paneles se escaneaban CON animación y el verde de accesibilidad era
+   * engañoso. `tsc` lo caza con TS2353 porque `test.use` está tipado sobre las
+   * claves de `PlaywrightTestOptions` y un literal con clave de más es error.
+   *
+   * `noEmit`: acá no se compila nada; Playwright transpila por su cuenta (y sin
+   * comprobar tipos). Esto es solo el candado.
+   */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "types": ["node", "@playwright/test"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["*.ts", "tests/**/*.ts", "manual/**/*.ts"],
+  "exclude": ["node_modules", "test-results", "playwright-report"]
+}

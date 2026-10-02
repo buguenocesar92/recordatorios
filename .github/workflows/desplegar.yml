@@ -1,0 +1,224 @@
+name: Despliegue
+
+# Construye la imagen del sitio, la publica en el registro de GitHub y la
+# instala en el servidor de despliegue. El job de instalación corre en el runner
+# self-hosted que vive DENTRO del servidor (ver README-despliegue.md): no
+# hacen falta llaves SSH ni abrir el servidor a internet, porque es el
+# servidor el que sale a preguntarle a GitHub si hay trabajo.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: despliegue-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGEN: ghcr.io/${{ github.repository }}
+
+jobs:
+  construir:
+    name: Construir, comprobar y publicar la imagen
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar la construcción
+        # Clavadas al commit y no a «@v3»/«@v6»: este job tiene «packages: write»
+        # y el GITHUB_TOKEN del registro. Una acción comprometida acá no roba un
+        # secreto y ya: publica una imagen en ghcr que el VPS se baja y ejecuta
+        # en el paso siguiente. Dependabot vigila «github-actions» y sube el pin.
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Entrar al registro de GitHub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Se construye SIN publicar: la imagen se inspecciona primero. Publicar y
+      # después comprobar dejaría las credenciales expuestas en el registro
+      # durante el intervalo, y una etiqueta publicada ya no se puede retirar
+      # de forma fiable —alguien pudo haberla descargado—.
+      - name: Construir la imagen
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: false
+          load: true
+          # Compila vendor/ dentro de la imagen (etapa "vendor" del Dockerfile):
+          # el secreto vive solo en el mount de esa etapa, nunca en una capa ni
+          # en el historial de la imagen. Mismo token que ya usa ci.yml.
+          secrets: |
+            composer_auth=${{ secrets.COMPOSER_GH_TOKEN }}
+          tags: |
+            ${{ env.IMAGEN }}:latest
+            ${{ env.IMAGEN }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # El .dockerignore excluye el .env; esto lo comprueba sobre la imagen ya
+      # construida, no sobre el .dockerignore en sí, porque es la única forma
+      # de saber qué quedó dentro de verdad.
+      #
+      # También «auth.json»: guarda el token de los paquetes privados y solo
+      # existe en el equipo de quien desarrolla, así que este runner nunca lo
+      # tendría. Se comprueba igual porque el candado tiene que seguir sirviendo
+      # el día que alguien construya y publique la imagen a mano desde su equipo.
+      - name: Comprobar que la imagen no lleva credenciales
+        env:
+          ETIQUETA: ${{ env.IMAGEN }}:${{ github.sha }}
+        run: |
+          set -e
+          for ruta in /app/.env /app/.env.host /app/auth.json; do
+              if docker run --rm --entrypoint sh "$ETIQUETA" -c "test -e $ruta"; then
+                  echo "La imagen contiene $ruta y no debería"
+                  exit 1
+              fi
+          done
+          echo "La imagen no lleva credenciales"
+
+      # Solo ahora, con la imagen ya inspeccionada, se publica.
+      - name: Publicar la imagen
+        env:
+          ETIQUETA: ${{ env.IMAGEN }}:${{ github.sha }}
+          ULTIMA: ${{ env.IMAGEN }}:latest
+        run: |
+          docker push "$ETIQUETA"
+          docker tag "$ETIQUETA" "$ULTIMA"
+          docker push "$ULTIMA"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  #  Instalación en el servidor de despliegue
+  #
+  #  Corre en el runner instalado EN EL PROPIO SERVIDOR (etiquetas
+  #  self-hosted,despliegue — ver README-despliegue.md). El directorio de
+  #  despliegue ya existe con su .env.host y los dos archivos de compose: el
+  #  primer despliegue se hace a mano siguiendo esa guía; este job solo
+  #  actualiza uno que ya está de pie.
+  # ────────────────────────────────────────────────────────────────────────────
+  desplegar:
+    name: Instalar en el servidor de despliegue
+    needs: construir
+    runs-on: [self-hosted, despliegue]
+    timeout-minutes: 15
+
+    steps:
+      - name: Desplegar y verificar
+        working-directory: ${{ vars.RUTA_DESPLIEGUE }}
+        env:
+          IMAGEN: ghcr.io/${{ github.repository }}
+          SHA: ${{ github.sha }}
+          URL_SALUD: ${{ vars.URL_SALUD }}
+        run: |
+          set -euo pipefail
+
+          # 1. Sin .env.host no hay credenciales ni configuración: mejor
+          #    detenerse acá que a mitad de un arranque.
+          if [ ! -f .env.host ]; then
+              echo "Falta .env.host en $(pwd) — no se puede desplegar."
+              echo "Ver README-despliegue.md, sección «Preparar el servidor la primera vez»."
+              exit 1
+          fi
+
+          if [ ! -d .git ]; then
+              echo "$(pwd) no es el checkout del repositorio."
+              echo "Revisar la variable RUTA_DESPLIEGUE (Settings → Actions → Variables) y la guía «Preparar el servidor la primera vez» en README-despliegue.md."
+              exit 1
+          fi
+
+          COMPOSE="docker compose --env-file .env.host -f docker-compose.yml -f docker-compose.prod.yml"
+
+          # docker-compose.prod.yml exige APP_IMAGE con `${APP_IMAGE:?...}` en
+          # `app` Y en `worker`: Compose interpola el archivo COMPLETO en
+          # cualquier subcomando, no solo en `up`. Sin exportarla acá, UNA VEZ,
+          # antes de la primera llamada a $COMPOSE, «ps» de más abajo fallaba
+          # dentro de un `if ... >/dev/null 2>&1` que se tragaba el error —el
+          # respaldo se saltaba en silencio, como si no hubiera contenedor
+          # previo— y el `migrate --force` posterior abortaba por `set -e`
+          # dejando contenedores nuevos con el esquema viejo.
+          export APP_IMAGE="${IMAGEN}:${SHA}"
+
+          # git pull normal falla si la rama se reescribió; esto no.
+          git fetch origin main
+          git reset --hard origin/main
+
+          # Qué imagen estaba corriendo, por si hay que volver. Vive fuera del
+          # árbol versionado, así que un `reset --hard` no la toca.
+          MARCA=".ultimo-sha-desplegado"
+          SHA_ANTERIOR="$(cat "$MARCA" 2>/dev/null || true)"
+
+          # 2. Respaldo antes de tocar nada. Si el contenedor de antes no está
+          #    de pie (primera vez que corre este workflow tras el bootstrap
+          #    manual), no hay nada que respaldar todavía.
+          if $COMPOSE ps --status running app >/dev/null 2>&1 && [ -n "$($COMPOSE ps -q app)" ]; then
+              echo "📦 Respaldando la base de datos..."
+              $COMPOSE exec -T --user www-data app php artisan backup:run --only-db --force
+          else
+              echo "⚠️  No hay contenedor previo corriendo; se omite el respaldo."
+          fi
+
+          # 3. Trae la imagen nueva y levanta.
+          echo "⬇️  Bajando ${IMAGEN}:${SHA}..."
+          $COMPOSE pull
+          $COMPOSE up -d
+
+          # 4. Migra y compila las cachés de configuración, rutas, vistas y eventos.
+          $COMPOSE exec -T --user www-data app php artisan migrate --force
+          $COMPOSE exec -T --user www-data app php artisan config:cache
+          $COMPOSE exec -T --user www-data app php artisan route:cache
+          $COMPOSE exec -T --user www-data app php artisan event:cache
+          $COMPOSE exec -T --user www-data app php artisan view:cache
+
+          # 5. Vacía la caché de página: el HTML guardado antes puede no
+          #    corresponder al que genera el código nuevo.
+          $COMPOSE exec -T --user www-data app php artisan cache:clear
+
+          # 6. Recarga Octane. Sin esto sigue sirviendo el código viejo desde
+          #    memoria aunque los archivos ya cambiaron.
+          $COMPOSE exec -T --user www-data app php artisan octane:reload
+
+          # 7. Le pregunta al sitio si responde, hasta un minuto. Que el
+          #    contenedor esté «up» no significa que la aplicación funcione.
+          echo "🔎 Esperando a que ${URL_SALUD} responda..."
+          listo=""
+          for _ in $(seq 1 12); do
+              if curl -fsS -o /dev/null "$URL_SALUD"; then
+                  listo=1
+                  break
+              fi
+              sleep 5
+          done
+
+          if [ -z "$listo" ]; then
+              echo "❌ El sitio no respondió tras un minuto."
+              echo "--- docker compose logs app (últimas 100 líneas) ---"
+              $COMPOSE logs --tail=100 app || true
+
+              if [ -n "$SHA_ANTERIOR" ]; then
+                  echo "↩️  Volviendo a ${IMAGEN}:${SHA_ANTERIOR}..."
+                  export APP_IMAGE="${IMAGEN}:${SHA_ANTERIOR}"
+                  $COMPOSE up -d
+                  $COMPOSE exec -T --user www-data app php artisan cache:clear || true
+                  $COMPOSE exec -T --user www-data app php artisan octane:reload || true
+                  echo "El sitio volvió a la versión anterior. El despliegue de todos modos falla, para que se note."
+              else
+                  echo "No hay una imagen anterior registrada; no se puede revertir sola."
+              fi
+
+              exit 1
+          fi
+
+          echo "✅ Desplegado: ${IMAGEN}:${SHA} — ${URL_SALUD} responde."
+          echo "$SHA" > "$MARCA"

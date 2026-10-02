@@ -1,0 +1,37 @@
+/*
+ * Tailwind 4 se configura desde el CSS, no desde un archivo JS: esto reemplaza
+ * a las tres directivas `@tailwind` y al `tailwind.config.js`.
+ *
+ * `source(none)` apaga el rastreo automático desde la raíz del proyecto y deja
+ * mandando solo a los `@source` de abajo. Sin eso, en desarrollo Tailwind
+ * recorre además `vendor/` y mete en la hoja ochenta utilidades que solo usan
+ * los paquetes —que ya traen su propio CSS—: el archivo pasaba de 9,7 kB a
+ * 20,3 kB, y lo que se ve en desarrollo dejaba de ser lo que se sirve en
+ * producción, donde la imagen se construye sin `vendor/`.
+ */
+@import 'tailwindcss' source(none);
+
+@source '../views';
+@source '../js';
+/*
+ * `app` entero, no solo Livewire: hay clases de Tailwind escritas en línea en
+ * los render hooks de Filament (`AppServiceProvider`), y dejarlas fuera hace
+ * que el CSS salga incompleto sin un solo aviso. El Dockerfile copia esta
+ * misma carpeta en la etapa de assets, para que la hoja de la imagen sea la
+ * misma que la de desarrollo.
+ */
+@source '../../app';
+
+@theme {
+    /*
+     * La tipografía del sistema. Tailwind 4 la toma de aquí; antes vivía en
+     * `theme.extend.fontFamily` del archivo JS.
+     */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    /* Colores corporativos, disponibles como `bg-brand-500`, `text-brand-900`… */
+    --color-brand-50: #f0f7ff;
+    --color-brand-100: #e0effe;
+    --color-brand-500: #3b82f6;
+    --color-brand-900: #1e3a8a;
+}

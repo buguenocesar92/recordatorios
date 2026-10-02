@@ -1,0 +1,54 @@
+# Cuánto puede guardar el navegador cada archivo estático.
+#
+# Las imágenes, tipografías, hojas de estilo y videos los sirve Caddy
+# directamente, sin pasar por PHP: el middleware de la aplicación nunca los ve,
+# así que las cabeceras de caché tienen que ponerse acá. Sin ellas el visitante
+# se vuelve a descargar el sitio entero en cada visita, y en una comuna donde
+# mucha gente entra desde el teléfono eso son megas de datos móviles regalados.
+#
+# Este archivo se inyecta DENTRO del bloque del sitio, con la variable
+# CADDY_SERVER_EXTRA_DIRECTIVES. Importarlo por «Caddyfile.d» no sirve: ese
+# import está fuera del bloque, y ahí una directiva «header» no significa nada
+# (Caddy la acepta sin quejarse y no hace nada, que es lo peor que podía pasar).
+#
+# Se distingue por si el nombre del archivo lleva el sello de su contenido:
+#
+# - Los que lo llevan —el paquete de estilos, las tipografías— no pueden cambiar
+#   sin cambiar de nombre, así que se guardan para siempre.
+# - Los que no —una imagen que el editor puede reemplazar conservando el
+#   nombre— se guardan una semana; pasada esa semana el navegador la sigue
+#   mostrando mientras pregunta si cambió, así que nadie espera por eso.
+
+# El orden importa: dentro de un «route» las directivas se aplican en el orden
+# en que están escritas, y la última que coincida es la que queda. Por eso lo
+# general va primero y lo específico después.
+
+@otros path *.css *.js
+header @otros Cache-Control "public, max-age=86400, stale-while-revalidate=3600"
+
+@imagenes path *.avif *.webp *.jpg *.jpeg *.png *.gif *.svg *.ico
+header @imagenes Cache-Control "public, max-age=604800, stale-while-revalidate=86400"
+
+# Los videos y documentos llevan la fecha en el nombre desde que los sube el
+# panel, así que uno concreto no cambia nunca: se guardan un año. Son los
+# archivos más pesados del sitio y volver a bajarlos cada semana no tiene
+# sentido.
+@medios path *.mp4 *.webm *.pdf
+header @medios Cache-Control "public, max-age=31536000"
+
+@sellados path *.woff2 *.woff *.ttf /sitio/css/sitio.*.css /build/* /sitio-nuxt/css/* /sitio-nuxt/js/* /sitio/js/*
+header @sellados Cache-Control "public, max-age=31536000, immutable"
+
+# Nada que haya subido alguien se ejecuta, pase lo que pase.
+#
+# Las subidas del panel van a storage/app/public, que se sirve por el enlace
+# público /storage. Comprobado en local: un archivo .php dejado ahí SE EJECUTA
+# —devolvió «EJECUTADO-8.5.9»—, así que cualquiera con permiso para subir un
+# archivo podía ejecutar código en el servidor. Es el mismo agujero que ya se
+# cerró una vez en el sitio municipal.
+#
+# Esta es la capa que no depende de que nadie se acuerde: aunque un formulario
+# acepte cualquier extensión por descuido, acá no se ejecuta. La otra capa —la
+# lista de tipos permitidos en los campos de subida— está en el código.
+@subidas_ejecutables path_regexp subidas_ejec ^/(storage|uploads)/.*\.(php[0-9]?|phtml|phar|pht|cgi|pl|py|sh|htaccess)$
+respond @subidas_ejecutables "No" 403

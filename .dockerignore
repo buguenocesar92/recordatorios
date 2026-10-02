@@ -1,0 +1,62 @@
+# Credenciales: nunca deben terminar dentro de una imagen que se publica.
+.env
+.env.*
+!.env.example
+
+# Credenciales y estado local de quien desarrolla. Están en el .gitignore, así
+# que nunca llegan al repositorio, pero el «COPY . .» del Dockerfile copia el
+# directorio de trabajo tal cual: un «docker build» hecho fuera del CI hornearía
+# el token de los paquetes privados dentro de una imagen que se publica.
+auth.json
+e2e/.auth
+test-results
+.superpowers
+
+# Historial y metadatos de git
+.git
+.gitignore
+.gitattributes
+.github
+
+# Dependencias que el propio Dockerfile reinstala dentro de la imagen
+vendor/*
+!vendor/muni-graneros
+vendor/muni-graneros/*
+!vendor/muni-graneros/laravel-muni-ui
+vendor/muni-graneros/laravel-muni-ui/*
+!vendor/muni-graneros/laravel-muni-ui/resources
+node_modules
+
+# Excepción: la hoja de estilos del paquete de diseño. La etapa que compila los
+# assets corre antes de que exista vendor —lo instala composer más adelante, en
+# otra etapa— y auth.css la importa.
+#
+# Hay que abrir el camino nivel por nivel: Docker no reincluye una subruta si su
+# directorio padre quedó excluido, y con un solo «!» el build falla al calcular
+# la huella del COPY, sin decir cuál es el archivo que falta.
+
+# Artefactos locales que no aportan nada dentro del contenedor
+storage/logs
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/backup-temp
+storage/debugbar
+bootstrap/cache/*.php
+.phpunit.result.cache
+tests
+
+# Documentación y herramientas de desarrollo
+docs
+*.md
+.ai
+# Plantillas del generador: sólo las usa `./scaffold` en el host, y su código
+# React no se compila nunca dentro de esta imagen. Copiarlas al contexto de
+# build sólo sirve para invalidar la caché de capas cada vez que se editan.
+presets
+.claude
+.gemini
+.githooks
+.mcp.json
+e2e
+docker-compose*.yml

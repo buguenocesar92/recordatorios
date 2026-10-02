@@ -1,0 +1,31 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+
+    # Qué se analiza y qué NO. Ver docs/FRONTEND-INERTIA-REACT.md §11.
+    #
+    # - `app`: el árbol Laravel del scaffold. Es lo que hereda cada proyecto.
+    # - `tools`: los aplicadores del generador (`usar-paquete-compartido.php`,
+    #   `aplicar-frontend-inertia-react.php`). Son PHP suelto sin framework
+    #   detrás, así que se analizan sin depender de nada instalado. Estaban
+    #   fuera de la cobertura y son justamente el código que reescribe archivos
+    #   ajenos: un error ahí rompe la generación de un proyecto entero.
+    #
+    # Fuera de la cobertura, y sabido:
+    # - `HandleInertiaRequests.php`: ver `excludePaths` más abajo.
+    # - `tests/`: la suite del scaffold.
+    paths:
+        - app
+        - tools
+
+
+    ignoreErrors:
+        -
+            # Un `isset()` defensivo sobre un mapa literal declarado en el mismo
+            # archivo: PHPStan tiene razón en que la clave siempre existe, pero
+            # la guarda protege de que alguien edite el mapa y no la lista. El
+            # archivo es del aplicador del paquete compartido, no de esta rama.
+            identifier: isset.offset
+            path: tools/usar-paquete-compartido.php

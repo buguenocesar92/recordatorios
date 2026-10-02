@@ -1,0 +1,304 @@
+---
+name: blade-livewire-design
+description: Convenciones de diseño y estructura para vistas Blade + Livewire 4 + Alpine.js + Filament 5 en proyectos Laravel de César (Municipalidad de Graneros, KraftDo). NUNCA usar React, Vue, Inertia con React, ni Next.js. Usar cuando se creen o modifiquen vistas, componentes Livewire, layouts o paneles Filament, y tambien al ajustar espaciado, tipografia, color, modo oscuro, sombras, iconos, graficos, navegacion SPA (wire:navigate) o animacion.
+---
+
+# Blade + Livewire + Filament — Convenciones de diseño
+
+## Versiones reales del ecosistema (verificado 2026-08-17 en composer.lock)
+
+**Laravel 13 · Livewire 4 · Filament 5 · Tailwind 3.4 · Motion 13.**
+
+| Repo | Livewire | Filament | Laravel |
+|---|---|---|---|
+| control-acceso-graneros | 4.3.3 | 5.6.8 | 13.20 |
+| credenciales-graneros | 4.3.3 | 5.7.1 | 13.20 |
+| discapacidad-graneros | 4.3.3 | 5.6.8 | 13.20 |
+| feria-graneros | 4.3.3 | 5.6.8 | 13.20 |
+| licencias-graneros | 4.3.3 | 5.7.1 | 13.20 |
+| seguridad-graneros | 4.3.3 | 5.7.1 | 13.20 |
+| web-graneros | 4.3.3 | 5.7.1 | 13.20 |
+| scaffold-laravel-filament-pwa | 4.3.3 | 5.7.1 | 13.20 |
+| muni-kit-host | 4.4.0 | 5.7.6 | 13.25 |
+| **plataforma-graneros/personas-graneros** | **3.8.2** | **3.3.54** | **12.62** |
+
+**Antes de escribir código, confirmar la versión del repo en el que estás**
+(`grep -A1 '"name": "livewire/livewire"' composer.lock`). personas-graneros —
+el maestro de personas — sigue en Livewire 3 / Filament 3: ahí NO aplican
+islands, `wire:show`, `wire:sort` ni `#[Transition]`. Mezclar APIs de dos
+mayores es el error más caro de este ecosistema.
+
+## Regla dura
+NUNCA propongas ni instales React, Vue, Svelte, Inertia+React ni Next.js.
+Todo el frontend de estos proyectos es Blade + Livewire 4 + Alpine.js para
+interactividad puntual (dropdowns, modales, toggles). Si algo "necesitaría"
+un framework de componentes JS, resolvelo con Livewire (wire:model,
+wire:click) o Alpine (x-data, x-show) antes de sugerir salir del stack.
+
+## Referencias (leerlas cuando corresponda)
+
+- **`references/arquitectura-spa.md`** — cómo aislar complejidad (Blade →
+  island → lazy → web component → paquete), `wire:navigate` y modo SPA, orden
+  de reactividad, animación con **Motion One** (no GSAP), iconos, gráficos.
+  Leerla al decidir la estructura de una vista, activar SPA o animar algo.
+- **`references/acabado-premium.md`** — escala de espaciado, tipografía,
+  color en OKLCH, modo oscuro, sombras y elevación, micro-interacciones,
+  checklist visual. Leerla al maquetar o cuando algo "se ve barato".
+
+## Stack de componentes
+- Tailwind CSS como base de utilidades.
+- Filament v5 para paneles admin — no mezclar Filament con vistas Blade
+  custom del mismo recurso salvo que sea explícitamente un frontend público
+  separado del panel.
+- Alpine viene incluido en Livewire: nunca instalar ni importar Alpine por
+  separado en el bundle del panel.
+- Animación: **Motion One** (`motion` ^13, `import { animate, inView, stagger }`).
+  No usar GSAP, anime.js ni AOS. En Motion v13 la opción es `ease` (no `easing`,
+  que era de v10 y hoy se ignora en silencio) y `duration` va en segundos.
+
+## Componentes de clase, no single-file
+
+El ecosistema usa **componentes Livewire de clase** (`app/Livewire/…` + vista
+Blade separada), no single-file components. Es deliberado: los subsistemas se
+distribuyen como paquetes Composer (muni-kit, laravel-muni-ui,
+laravel-muni-shared) y la separación clase/vista es lo que permite publicar y
+sobreescribir vistas por instalación.
+
+Consecuencia práctica: **`@placeholder` / `@endplaceholder` NO aplica.** Esa
+directiva la procesa el parser del compilador de single-file components
+(`Livewire\Compiler\Parser\SingleFileParser`). Con componentes de clase el
+estado de carga se define con:
+- el método `placeholder()` en la clase (para `#[Lazy]`), o
+- `livewire.component_placeholder` en `config/livewire.php` para un
+  placeholder global del proyecto, o
+- `wire:loading` con skeleton (ver Patrones) para bloques dentro de una vista.
+
+## Livewire 4 — qué usar (verificado en el bundle instalado)
+
+Directivas reales presentes en `livewire.js` de 4.3.3:
+`wire:island` · `wire:sort` · `wire:show` · `wire:text` · `wire:bind` ·
+`wire:transition` · `wire:intersect` · `wire:confirm` · `wire:current` ·
+`wire:navigate` · `wire:model` · `wire:key` · `wire:ignore` · `wire:init`.
+
+### Islands — el patrón por defecto en dashboards
+Marcan regiones que se actualizan solas, con aislamiento de propiedades
+computadas: refrescar una isla ejecuta **solo las queries de esa isla**. Un
+dashboard con doce widgets deja de recalcular doce KPIs para actualizar uno.
+Funciona sobre componentes de clase; no exige refactor a single-file.
+
+```blade
+<div>
+    @island(name: 'kpis', defer: true)
+        @foreach ($this->kpis as $kpi)  {{-- computed aislado a esta isla --}}
+            <x-muni-ui::stat :label="$kpi->label" :value="$kpi->value" />
+        @endforeach
+    @endisland
+
+    @island(name: 'grafico', lazy: true)
+        <x-grafico-tramites />
+    @endisland
+</div>
+```
+Parámetros soportados: `name`, `lazy`, `defer`, `always`, `skip`, `with`.
+Regla: **una isla por consulta cara**. Si dos widgets comparten la misma query,
+van en la misma isla.
+
+### Optimistic UI antes que animación
+`wire:show`, `wire:text` y `wire:bind` actualizan la pantalla sin ida y vuelta
+al servidor. Una UI se siente instantánea por esto, no por una animación de
+entrada. Preferir siempre esto sobre agregar movimiento.
+
+### Reordenar → `wire:sort`, no una librería
+Drag and drop viene en el core. **No instalar SortableJS ni GSAP Flip** para
+reordenar widgets, filas o bloques.
+
+### View Transitions por acción
+`#[Transition]` en el método del componente; `wire:transition` en el elemento.
+Sujeto a `prefers-reduced-motion` igual que todo lo demás.
+
+## Gotchas que ya costaron caro (no repetirlos)
+
+1. **Middleware persistente (Livewire 4).** Todo middleware propio que deba
+   proteger acciones del panel necesita `Livewire::addPersistentMiddleware()`.
+   Sin eso el MFA no protegía **ninguna** acción del panel en 9 sistemas: la
+   petición inicial pasaba por el middleware, las subsiguientes de Livewire no.
+2. **Selectores de theme en Filament v5.** Los selectores "obvios" del theme
+   son falsos y fallan en silencio. Verificar por `getComputedStyle`, nunca por
+   captura de pantalla.
+3. **`->spa()` en Filament.** Al activarlo, los scripts del cuerpo se duplican
+   y los observadores quedan huérfanos. Y `->slideOver()` no abre modal si el
+   recurso tiene página de creación.
+4. **Shield + Octane.** El builder de nomenclatura va en `register()` + `extend()`,
+   no en `boot()`. Verificar permisos SIEMPRE en el navegador, nunca en tinker.
+
+## CSS moderno permitido (siempre como mejora progresiva)
+
+Base sólida primero; lo nuevo dentro de `@supports`. Nunca dejar que el layout
+dependa de una feature sin fallback.
+
+- **Anchor positioning** (`anchor-name` / `position-anchor`) para dropdowns,
+  tooltips y popovers. Reemplaza Floating UI y Popper.js — no instalarlos.
+  Con Alpine, `x-anchor` ya viene bundleado y es la opción segura hoy.
+- **Scroll-driven animations** (`animation-timeline: scroll()` / `view()`) para
+  widgets que entran al hacer scroll. Sustituye IntersectionObserver y
+  ScrollTrigger. Dentro de `@supports (animation-timeline: view())`.
+- **Container queries** y **container style queries** para componentes que
+  aparecen en columna angosta y ancha sin clase modificadora.
+- **`:has()`** para estados de padre sin JS.
+- **`contrast-color()`**: dar el color por defecto ya probado y aplicar
+  `contrast-color()` dentro de `@supports`.
+- **`display: masonry`** solo si los widgets tienen alturas dispares y hay
+  fallback en grid.
+
+## Tokens
+
+No inventar hex nuevos. La paleta institucional vive como variables CSS en
+`muni-graneros/laravel-muni-ui` (`resources/css/muni-ui.css`): franja de 7
+colores (`--muni-gob-*`) y tokens de superficie/texto/borde (`--muni-bg`,
+`--muni-surface`, `--muni-text`, `--muni-muted`, `--muni-border`,
+`--muni-accent`). Si hace falta un tono nuevo, se agrega **en el paquete**.
+KraftDo usa el equivalente en `laravel-kraftdo-ui`.
+
+**Duraciones** — `instant` 100 ms (hover, focus) · `fast` 150 ms (tooltips,
+dropdowns) · `base` 250 ms (modales, drawers, tabs) · `slow` 400 ms (entradas
+de página) · `deliberate` 600 ms (conteo de KPIs, dibujo de gráficos).
+Nunca superar 600 ms en UI de dashboard: si necesita más, es una carga.
+
+**Easing** — lo que entra `cubic-bezier(0.16, 1, 0.3, 1)`; lo que sale
+`cubic-bezier(0.4, 0, 1, 1)` y ~30 % más rápido; `cubic-bezier(0.34, 1.56, 0.64, 1)`
+solo para feedback puntual (toasts, badges).
+
+**Radios** — `sm` 4 · `base` 8 · `lg` 12 · `xl` 16 · `full` 9999 px.
+Cards y widgets `lg`; botones e inputs `base`.
+
+**Sombras** — elevación por sombra, no por borde grueso.
+`card` `0 1px 3px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .04)` ·
+`raised` `0 4px 12px rgb(0 0 0 / .08)` · `overlay` `0 16px 48px rgb(0 0 0 / .16)`.
+
+**Espaciado** — escala de 4 px. Gap entre widgets 24 px; padding de card 20 px
+(24 px de `lg` hacia arriba).
+
+## Reglas de dashboard
+
+Un dashboard no es un reporte, es una cabina: cada elemento tiene que ganarse
+su espacio ayudando a alguien a **decidir o actuar**. Criterio útil cuando
+piden "agregar un gráfico más".
+
+Los funcionarios municipales son usuarios diarios: **priorizar densidad de
+información sobre aire**. No hacer dashboards aireados tipo landing.
+
+1. Sidebar 240–280 px, franja de 4–6 KPIs arriba, grilla de contenido con
+   `grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))` y
+   `grid-auto-rows: minmax(200px, auto)`.
+2. **Tres estados diseñados por componente**: carga, vacío y error. Nunca una
+   card en blanco.
+3. **Altura reservada.** Gráficos y tablas declaran altura fija o
+   `aspect-ratio` desde el primer render. Cero layout shift.
+4. **Skeletons, no spinners**, respetando la altura final del contenido.
+5. **Números que cambian se animan**: KPIs cuentan desde 0 con `deliberate`.
+   Los que se actualizan por polling hacen un flash sutil de fondo, no un
+   re-conteo completo.
+6. **Entradas escalonadas**: `stagger(0.04)`, nunca más de 8 elementos; el
+   resto aparece junto.
+7. **Un solo foco de movimiento.** Si el gráfico se anima, la card no.
+8. **Hover solo con puntero**: envolver en `@media (hover: hover)`.
+9. **Colores de gráfico desde los tokens**, verificados contra contraste WCAG.
+
+## Accesibilidad (no negociable)
+
+- Respetar `prefers-reduced-motion: reduce`: desactivar movimiento y
+  transformaciones, mantener solo opacidad ≤100 ms.
+- Contraste mínimo AA (4.5:1 texto, 3:1 UI). El color no puede ser el único
+  portador de información en gráficos: agregar patrón, etiqueta o forma.
+- Focus visible en todo elemento interactivo; no eliminar el outline sin
+  reemplazarlo por un ring equivalente.
+- Áreas táctiles de 44×44 px mínimo.
+- Todo lo que se abre (modal, drawer, dropdown) atrapa el foco y cierra con `Esc`.
+- Labels en formularios, aunque sean `sr-only`.
+- Dark mode desde el inicio, no como parche: usar tokens, no hex.
+- Responsive mobile-first: hay funcionarios en terreno y vecinos desde el
+  celular. Probar el layout angosto primero.
+
+## Patrones
+
+### Show/hide → Alpine, no Motion
+```blade
+<div x-show="open"
+     x-transition:enter="transition ease-out duration-250"
+     x-transition:enter-start="opacity-0 translate-y-2"
+     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100 translate-y-0"
+     x-transition:leave-end="opacity-0 translate-y-2">
+</div>
+```
+
+### Entrada de grilla → Motion One
+```js
+inView('[data-dashboard-grid]', () => {
+    animate(
+        '[data-widget]',
+        { opacity: [0, 1], y: [12, 0] },
+        { duration: 0.4, delay: stagger(0.04), ease: [0.16, 1, 0.3, 1] }
+    );
+}, { amount: 0.2 });
+```
+
+### Skeleton con Livewire (componentes de clase)
+```blade
+<div wire:loading.flex wire:target="cargarDatos" class="animate-pulse flex-col gap-3">
+    <div class="h-4 w-1/3 rounded bg-gray-200 dark:bg-gray-700"></div>
+    <div class="h-32 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+</div>
+<div wire:loading.remove wire:target="cargarDatos">
+    {{-- contenido real --}}
+</div>
+```
+
+### Reduced motion
+```js
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!reduced) { /* animar */ }
+```
+
+## Evitar el "look genérico de IA"
+No converger siempre en `bg-indigo-500`, gradientes morado-a-azul o
+`rounded-2xl` en todo. Municipal = sobrio, institucional, con el cinturón de
+7 colores. KraftDo = más cercano a marca comercial. Máximo 3-4 tamaños de
+fuente por vista.
+
+## Antes de dar por terminado un componente
+
+- [ ] Screenshot en 1440 px y 390 px de ancho vía Chrome DevTools MCP
+- [ ] Estados cubiertos: loading, vacío, error, con datos, y datos extremos
+      (texto largo, números de 9 dígitos, 0 filas, 500 filas)
+- [ ] Modo oscuro verificado por `getComputedStyle`, no por captura
+- [ ] Navegación completa por teclado
+- [ ] Sin layout shift al cargar (CLS en el trace de performance)
+- [ ] `prefers-reduced-motion` probado
+
+Si el pedido es un ajuste chico, no aplicar la lista completa: criterio
+proporcional al tamaño del cambio.
+
+<!-- animacion-por-contexto -->
+## Animación por contexto
+
+- **Sistemas municipales** → Motion One (`motion` ^13). En v13 la opción es
+  `ease` (no `easing`, que es de v10 y se ignora en silencio) y `duration` va
+  en segundos.
+- **KraftDo** → GSAP. Timelines encadenadas, SplitText y efectos de marca.
+  Consultar las skills `gsap-skills` para la API; ignorar `gsap-react` y
+  `gsap-frameworks`.
+- **Nunca las dos librerías en el mismo bundle.**
+
+Independiente de la librería elegida, estas siguen ganando:
+
+| Caso | Herramienta correcta |
+|---|---|
+| Mostrar/ocultar modal, dropdown, panel | `x-transition` de Alpine |
+| Entrada al hacer scroll | `animation-timeline: scroll()` dentro de `@supports` |
+| Reordenar o arrastrar | `wire:sort` (core de Livewire 4) |
+| Transición entre páginas | `#[Transition]` / `wire:transition` |
+
+No instalar SortableJS, GSAP Flip, ScrollTrigger ni IntersectionObserver para
+esos cuatro casos.

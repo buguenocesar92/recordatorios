@@ -1,0 +1,18 @@
+{
+    "esquema": 1,
+    "nombre": "recordatorios",
+    "entidad": "kraftdo",
+    "preset": "completo",
+    "frontend": "livewire",
+    "opcionales": [],
+    "destino": "/home/cesar/Dev",
+    "puertos": {
+        "app": 8211
+    },
+    "post": {
+        "docker": false,
+        "git": false,
+        "assets": false,
+        "github": false
+    }
+}

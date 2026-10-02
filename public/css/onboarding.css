@@ -1,0 +1,73 @@
+/* Acabado accesible del recorrido guiado.
+ *
+ * Driver.js dibuja sus botones sin foco visible: la prueba automática los
+ * detectó recorriendo la página con el tabulador. Quien hace el recorrido sin
+ * ratón no veía qué botón tenía seleccionado —«Siguiente», «Cerrar»— y el
+ * recorrido guiado es justo lo primero que ve alguien que llega nuevo al
+ * sistema.
+ */
+.driver-popover-next-btn:focus-visible,
+.driver-popover-prev-btn:focus-visible,
+.driver-popover-close-btn:focus-visible,
+.onboarding-mute-btn:focus-visible {
+    /* Antes era «currentColor»: con «Siguiente» en texto blanco sobre el acento,
+     * el anillo se perdía contra el globo. El token de foco del panel contrasta
+     * en los dos modos. */
+    outline: 2px solid var(--muni-focus, #355a63);
+    outline-offset: 2px;
+    border-radius: .375rem;
+}
+
+/* Área táctil mínima en los botones del recorrido: en un teléfono de terreno,
+ * un botón de 20 px se falla más veces de las que se acierta. */
+.driver-popover-close-btn,
+.onboarding-mute-btn {
+    min-width: 24px;
+    min-height: 24px;
+}
+
+/* Colores del recorrido desde los tokens del panel (muni-ui-filament.css), en
+ * claro y en oscuro: los tokens cambian solos bajo «.dark».
+ *
+ * driver.css trae un globo blanco fijo, sin modo oscuro, con la «×» de cerrar
+ * en #d2d2d2 (1,51:1 sobre blanco) y botones delimitados únicamente por un
+ * borde #ccc (1,61:1). AA pide 4,5:1 en texto y 3:1 en el borde que hace
+ * visible un control (WCAG 1.4.11): un botón blanco sobre un globo blanco solo
+ * existe por ese borde. axe no lo reportaba —la «×» le queda «incomplete» por
+ * contenido demasiado corto y los bordes no los mide—, así que lo mide a mano
+ * la batería de accesibilidad.
+ *
+ * Los fallbacks son la paleta clara entera, texto y fondo juntos, para que sin
+ * el paquete (o con sus assets sin publicar) siga cumpliendo, aunque sea en
+ * claro. Las pseudo-clases se repiten porque driver.css las declara con
+ * especificidad 0,2,0 y pisarían el color del botón primario al pasar el ratón. */
+.driver-popover {
+    color: var(--muni-text, #20302f);
+    background-color: var(--muni-surface, #fff);
+    border: 1px solid var(--muni-border-2, #cfc7b3);
+}
+.driver-popover-arrow-side-left   { border-left-color:   var(--muni-surface, #fff); }
+.driver-popover-arrow-side-right  { border-right-color:  var(--muni-surface, #fff); }
+.driver-popover-arrow-side-top    { border-top-color:    var(--muni-surface, #fff); }
+.driver-popover-arrow-side-bottom { border-bottom-color: var(--muni-surface, #fff); }
+.driver-popover-progress-text { color: var(--muni-hint, #5f6e6c); }
+.driver-popover-close-btn { color: var(--muni-muted, #5c6f6d); }
+.driver-popover-close-btn:hover,
+.driver-popover-close-btn:focus { color: var(--muni-text, #20302f); }
+.driver-popover-footer-btn {
+    color: var(--muni-text, #20302f);
+    background-color: var(--muni-surface, #fff);
+    border-color: var(--muni-muted, #5c6f6d);
+}
+.driver-popover-footer-btn:hover,
+.driver-popover-footer-btn:focus { background-color: var(--muni-surface-2, #f6f3ea); }
+.driver-popover-next-btn {
+    color: var(--muni-on-accent, #fff);
+    background-color: var(--muni-accent, #355a63);
+    border-color: var(--muni-accent, #355a63);
+}
+.driver-popover-next-btn:hover,
+.driver-popover-next-btn:focus {
+    background-color: var(--muni-accent-strong, #0d3a44);
+    border-color: var(--muni-accent-strong, #0d3a44);
+}

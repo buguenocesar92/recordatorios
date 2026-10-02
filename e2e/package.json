@@ -1,0 +1,22 @@
+{
+  "name": "scaffold-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pruebas end-to-end (Playwright) y automatizaciones de manuales.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "manual:capturas": "playwright test --config manual.config.ts",
+    "manual:build": "node build-manual.mjs",
+    "manual": "npm run manual:capturas && npm run manual:build"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^20.19.43",
+    "marked": "^18.0.12",
+    "typescript": "^7.0.2"
+  }
+}

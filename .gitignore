@@ -1,0 +1,65 @@
+/.phpunit.cache
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/storage/app/*
+!/storage/app/public
+!/storage/app/public/.gitkeep
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log
+/auth.json
+/.vscode
+/.idea
+
+# Exclusiones de logs y cache de Laravel
+# Cerrojo del entrypoint de desarrollo (docker-entrypoint.sh): evita que app y
+# worker generen APP_KEY a la vez. Se crea vacío en el primer arranque.
+/storage/framework/.appkey.lock
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/testing/*
+!/storage/framework/testing/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+*.log
+
+
+# Playwright auth tokens
+e2e/.auth/
+e2e/playwright-report/
+e2e/test-results/
+/e2e/node_modules
+
+# Capturas de verificación de la batería E2E: se regeneran corriendo los
+# specs, no son material del manual de usuario (eso vive en docs/manual/img,
+# que sí se versiona).
+e2e/capturas/
+# Playwright escribe aquí cuando se le lanza desde la raíz y no desde e2e/:
+# así se colaron cinco archivos de una corrida fallida al repositorio.
+/test-results/
+
+# Cuaderno de trabajo de los agentes (no es del producto)
+.superpowers/
+
+# direnv (tokens por frente; NUNCA versionar)
+.envrc
+.direnv/
+
+# Worktrees de Claude Code (nunca versionar; ver §4 del informe de flujo)
+.claude/worktrees/
+.playwright-mcp/
+
+# direnv: variables locales (tokens). Nunca se versiona.
+.envrc
