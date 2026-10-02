@@ -44,3 +44,29 @@ it('está programado todos los días a las 03:00 UTC', function () {
     expect($evento->expression)->toBe('0 3 * * *')
         ->and((string) ($evento->timezone instanceof DateTimeZone ? $evento->timezone->getName() : $evento->timezone))->toBe('UTC');
 });
+
+it('la purga nunca toca una inscripción confirmada, sin importar su vencimiento ni su encuesta', function (?string $vencimiento) {
+    $confirmada = filaDeLista('ok@example.com', [
+        'confirm_expires_at' => $vencimiento !== null ? now()->sub($vencimiento) : null,
+        'confirmed_at' => now()->subDays(30),
+        'paid_penalty_last_year' => true,
+    ]);
+
+    expect(WaitlistSignup::expiredUnconfirmed()->count())->toBe(0);
+
+    $this->artisan('maintenance:daily')->assertSuccessful();
+
+    expect(WaitlistSignup::whereKey($confirmada->id)->exists())->toBeTrue();
+})->with([
+    'vencida hace un minuto' => '1 minute',
+    'vencida hace un año' => '365 days',
+    'sin vencimiento' => null,
+]);
+
+it('una sin confirmar y sin vencimiento tampoco se borra: la purga solo corta lo vencido', function () {
+    $sinFecha = filaDeLista('nueva@example.com', ['confirm_expires_at' => null]);
+
+    $this->artisan('maintenance:daily')->assertSuccessful();
+
+    expect(WaitlistSignup::whereKey($sinFecha->id)->exists())->toBeTrue();
+});
