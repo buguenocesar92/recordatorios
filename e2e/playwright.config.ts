@@ -30,6 +30,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: '.auth/user.json' },
       dependencies: ['setup'],
+      testIgnore: /waitlist\.spec\.ts/,
+    },
+    // La lista de espera es pública y sin sesión: ni depende del ingreso al
+    // panel ni arrastra su estado de sesión. Corre con
+    // `npx playwright test --project=lista-de-espera`.
+    {
+      name: 'lista-de-espera',
+      testMatch: /waitlist\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
     },
     /*
      * Hubo un proyecto «webkit-acceso» que corría solo las pantallas de acceso
