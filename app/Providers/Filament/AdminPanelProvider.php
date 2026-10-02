@@ -14,6 +14,7 @@ use App\Http\Middleware\CabecerasDeEndurecimiento;
 use App\Http\Middleware\IgnorarCookieDeRecordar;
 use App\Http\Middleware\NoncePorPeticion;
 use App\Http\Middleware\SinCacheParaAutenticados;
+use App\Http\Middleware\SoloDesdeLaVpn;
 use App\Support\AssetVersionado;
 use App\Support\Csp\PoliticaDelPanel;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
@@ -141,6 +142,8 @@ class AdminPanelProvider extends PanelProvider
             )
             ->plugin(FilamentShieldPlugin::make())
             ->middleware([
+                // Antes que nada: fuera de la VPN el panel no existe (404).
+                SoloDesdeLaVpn::class,
                 // Primero de todos, antes incluso de descifrar las cookies: el
                 // panel no pasa por el grupo «web», así que lo que se quita
                 // allí no se quita acá. Ver el docblock del middleware.

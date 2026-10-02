@@ -6,8 +6,10 @@ use App\Http\Middleware\IgnorarCookieDeRecordar;
 use App\Http\Middleware\NoncePorPeticion;
 use App\Http\Middleware\SinCacheCompartidaConCookies;
 use App\Http\Middleware\SinCacheParaAutenticados;
+use App\Http\Middleware\SoloDesdeLaVpn;
 use App\Http\Middleware\TwoFactorAuthentication;
 use App\Support\ReporteDeErrores;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -88,6 +90,14 @@ return Application::configure(basePath: dirname(__DIR__))
             AddQueuedCookiesToResponse::class,
             'cache.headers:public;max_age=300;s_maxage=300;etag',
         ]);
+
+        // La VPN se comprueba antes que la autenticación: fuera de la VPN el
+        // panel y la pantalla del segundo factor responden 404, no «inicia
+        // sesión». Sin esto Laravel ordena «auth» primero por prioridad.
+        $middleware->prependToPriorityList(
+            before: AuthenticatesRequests::class,
+            prepend: SoloDesdeLaVpn::class,
+        );
 
         // La lista de espera (formulario de la portada, confirmación, baja):
         // las mismas cabeceras que el sitio, el enlace de modelos para

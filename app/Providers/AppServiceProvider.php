@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Avisos\RegistroDeFuentes;
 use App\Http\Middleware\AcotarVidaDeSesion;
 use App\Http\Middleware\SinCacheParaAutenticados;
+use App\Http\Middleware\SoloDesdeLaVpn;
 use App\Http\Middleware\TwoFactorAuthentication;
 use App\Listeners\RegistrarAcceso;
 use App\Models\WaitlistSignup;
@@ -215,6 +216,8 @@ class AppServiceProvider extends ServiceProvider
         // el panel pero puede operarlo, que es lo peor de los dos mundos: parece
         // protegido y no lo está.
         Livewire::addPersistentMiddleware([
+            // Las acciones de Livewire del panel también, no solo la primera carga.
+            SoloDesdeLaVpn::class,
             TwoFactorAuthentication::class,
             // El corte de sesión va en la misma lista y por el mismo motivo: un
             // middleware puesto solo en «authMiddleware» se aplica a la primera

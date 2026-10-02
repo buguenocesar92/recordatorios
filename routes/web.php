@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SoloDesdeLaVpn;
 use App\Livewire\VerificarMfa;
 use App\Support\Csp\PoliticaDelPanel;
 use Illuminate\Http\Request;
@@ -74,6 +75,7 @@ Route::post('/logout', function (Request $request) {
 // la del grupo «web», y spatie respeta la que ya viene puesta.
 Route::get('/verificar-mfa', VerificarMfa::class)
     ->middleware([
+        SoloDesdeLaVpn::class,
         'auth',
         'sesion.acotada',
         'sin-cache',
