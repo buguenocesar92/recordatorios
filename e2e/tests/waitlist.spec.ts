@@ -119,6 +119,11 @@ test('sin el token de Turnstile el servidor rechaza el alta y no manda correo', 
   await page.getByLabel('Correo electrónico').fill(correo);
   await page.getByLabel(/Acepto|acepto/).check();
 
+  // Espera a que el widget termine de resolver y ponga su token: con `load` el
+  // script de Turnstile aún puede estar pintándose, y si se quita el campo
+  // antes, el widget lo vuelve a crear con un token válido tras el borrado.
+  await expect(page.locator('[name="cf-turnstile-response"]')).toHaveValue(/.+/);
+
   // Quita el campo del widget antes de enviar: simula un bot que no resuelve el desafío.
   await page.evaluate(() => document.querySelectorAll('[name="cf-turnstile-response"]').forEach((e) => e.remove()));
   await page.getByRole('button', { name: /Inscribirme/ }).click();
