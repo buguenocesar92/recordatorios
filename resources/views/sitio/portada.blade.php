@@ -81,11 +81,11 @@
             <p class="mt-2 text-atenuado">Todavía no está abierto. Déjanos tu correo y te avisamos cuando lo esté. Te mandaremos un enlace para confirmar: sin confirmación, borramos el dato en 72 horas.</p>
 
             @if ($errores->any())
-                <div role="alert" aria-labelledby="errores-titulo" class="mt-6 rounded-lg border-2 border-error bg-superficie p-4" tabindex="-1" id="errores">
+                <div role="alert" aria-labelledby="errores-titulo" class="mt-6 rounded-lg border-2 border-error bg-superficie p-4" tabindex="-1" id="errores" autofocus>
                     <h3 id="errores-titulo" class="font-semibold text-error">Revisa el formulario: hay {{ $errores->count() === 1 ? 'un problema' : $errores->count().' problemas' }}</h3>
                     <ul class="mt-2 list-disc space-y-1 pl-5">
                         @foreach ($errores->keys() as $campo)
-                            <li><a class="underline underline-offset-2" href="#{{ $campo === 'turnstile' ? 'verificacion' : 'campo-'.$campo }}">{{ $errores->first($campo) }}</a></li>
+                            <li><a class="underline underline-offset-2" href="#{{ $campo === 'turnstile' ? 'verificacion' : 'campo-'.explode('.', $campo)[0] }}">{{ $errores->first($campo) }}</a></li>
                         @endforeach
                     </ul>
                 </div>
@@ -126,12 +126,13 @@
                     @endif
                 </div>
 
-                <fieldset id="campo-interests" @if ($errores->has('interests') || $errores->has('interests.0')) aria-describedby="error-interests" @endif>
+                <fieldset @if ($errores->has('interests') || $errores->has('interests.0')) aria-describedby="error-interests" @endif>
                     <legend class="font-medium">¿Qué te gustaría que te recordemos? <span class="font-normal text-atenuado">(opcional)</span></legend>
                     <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                         @foreach ($tipos as $tipo)
                             <label class="flex min-h-11 items-center gap-3 rounded-md border border-borde px-3">
-                                <input type="checkbox" name="interests[]" value="{{ $tipo->value }}" class="size-5 accent-(--sitio-acento)" @checked(in_array($tipo->value, $interesesAnteriores, true))>
+                                {{-- El id del primero es el destino del enlace del resumen de errores: un fieldset no recibe foco. --}}
+                                <input @if ($loop->first) id="campo-interests" @endif type="checkbox" name="interests[]" value="{{ $tipo->value }}" class="size-6" @checked(in_array($tipo->value, $interesesAnteriores, true))>
                                 <span>{{ $tipo->label() }}</span>
                             </label>
                         @endforeach
@@ -146,19 +147,19 @@
                         <input id="campo-consent" name="consent" type="checkbox" value="1" required
                             aria-describedby="{{ $describe('consent', 'ayuda-consent') }}"
                             @if ($errores->has('consent')) aria-invalid="true" @endif
-                            class="mt-1 size-5 shrink-0 accent-(--sitio-acento)">
+                            class="mt-0.5 size-6 shrink-0">
                         <label for="campo-consent">
                             Acepto que {{ config('sitio.entidad.nombre') }} guarde mi correo para avisarme cuando esto abra, según el
                             <a href="/privacidad" class="font-medium text-acento underline underline-offset-2">aviso de privacidad</a>.
                         </label>
                     </div>
-                    <p id="ayuda-consent" class="mt-2 pl-8 text-sm text-atenuado">Entiendo que no es un servicio del Estado ni de ningún municipio. Puedo darme de baja con un clic desde cualquier correo.</p>
+                    <p id="ayuda-consent" class="mt-2 pl-9 text-sm text-atenuado">Entiendo que no es un servicio del Estado ni de ningún municipio. Puedo darme de baja con un clic desde cualquier correo.</p>
                     @if ($errores->has('consent'))
-                        <p id="error-consent" class="mt-2 pl-8 text-sm font-medium text-error">Error: {{ $errores->first('consent') }}</p>
+                        <p id="error-consent" class="mt-2 pl-9 text-sm font-medium text-error">Error: {{ $errores->first('consent') }}</p>
                     @endif
                 </div>
 
-                <div id="verificacion">
+                <div id="verificacion" tabindex="-1">
                     <p class="text-sm text-atenuado">Comprobamos que no eres un robot con Cloudflare Turnstile, sin imágenes que descifrar.</p>
                     <div class="cf-turnstile mt-2 min-h-[65px]" data-sitekey="{{ $sitekey }}" data-language="es" data-theme="auto" data-size="flexible"></div>
                     <noscript><p class="mt-2 text-sm font-medium">Para inscribirte necesitas JavaScript activado (lo usa solo la comprobación anti-robots).</p></noscript>

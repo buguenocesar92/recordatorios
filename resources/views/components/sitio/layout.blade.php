@@ -16,8 +16,10 @@
     @vite('resources/css/sitio.css')
 </head>
 <body class="min-h-full bg-lienzo font-sans text-tinta antialiased">
-    {{-- Primer foco de la página: quien navega con teclado salta la cabecera. --}}
-    <a href="#contenido" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-md focus:bg-superficie focus:px-4 focus:py-2">
+    {{-- Primer foco de la página: quien navega con teclado salta la cabecera.
+         Aparece SOBRE la barra (acento profundo en los dos modos): el anillo es
+         el realce claro, no el acento, que sobre esa barra medía 1,81:1. --}}
+    <a href="#contenido" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-md focus:bg-superficie focus:px-4 focus:py-2 focus-visible:outline-(--marca-realce-claro)">
         Saltar al contenido
     </a>
     <x-sitio.cabecera />

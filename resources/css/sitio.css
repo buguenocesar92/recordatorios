@@ -127,13 +127,11 @@
 }
 
 @layer base {
-    html {
-        scroll-behavior: smooth;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
+    /* Solo con movimiento permitido: con `reduce` el salto a un ancla es
+       instantáneo (WCAG 2.3.3). */
+    @media (prefers-reduced-motion: no-preference) {
         html {
-            scroll-behavior: auto;
+            scroll-behavior: smooth;
         }
     }
 
@@ -145,8 +143,87 @@
         outline-offset: 2px;
     }
 
+    /* Casillas y opciones dibujadas por nosotros, no por el navegador: la
+       nativa en modo oscuro mide 3,04:1 de borde contra el interior (apenas
+       sobre el mínimo de 3:1). El borde es `--sitio-atenuado` (≥ 5,9:1 en los
+       dos modos) y el marcado `--sitio-sobre-acento` sobre `--sitio-acento`. */
+    input[type='checkbox'],
+    input[type='radio'] {
+        appearance: none;
+        display: inline-grid;
+        flex-shrink: 0;
+        place-content: center;
+        border: 2px solid var(--sitio-atenuado);
+        background-color: var(--sitio-superficie);
+    }
+
+    input[type='checkbox'] {
+        border-radius: 0.25rem;
+    }
+
+    input[type='radio'] {
+        border-radius: 9999px;
+    }
+
+    input[type='checkbox']:checked,
+    input[type='radio']:checked {
+        border-color: var(--sitio-acento);
+        background-color: var(--sitio-acento);
+    }
+
+    input[type='checkbox']::before,
+    input[type='radio']::before {
+        content: '';
+        /* Tamaño fijo: un porcentaje se resuelve contra una pista de la cuadrícula
+           que se dimensiona con este mismo contenido (0 px). */
+        width: 0.75rem;
+        height: 0.75rem;
+        background-color: var(--sitio-sobre-acento);
+        transform: scale(0);
+    }
+
+    input[type='checkbox']::before {
+        clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+    }
+
+    input[type='radio']::before {
+        border-radius: 9999px;
+    }
+
+    input[type='checkbox']:checked::before,
+    input[type='radio']:checked::before {
+        transform: scale(1);
+    }
+
+    @media (forced-colors: active) {
+        input[type='checkbox']:checked,
+        input[type='radio']:checked {
+            border-color: CanvasText;
+            background-color: Canvas;
+        }
+
+        input[type='checkbox']::before,
+        input[type='radio']::before {
+            background-color: CanvasText;
+        }
+    }
+
     img {
         max-width: 100%;
         height: auto;
+    }
+}
+
+/*
+ * Turnstile en `flexible` no baja de 300 px de ancho. En teléfonos de hasta
+ * ~375 px el espacio útil del formulario es menor (viewport − 32 de sección
+ * − 42 de tarjeta) y el widget desbordaba la página (WCAG 1.4.10 Reflow, 320 px:
+ * scrollWidth 337). Se reduce al 80 % desde la esquina superior izquierda: la
+ * transformación sí cuenta para el desborde y el alto sigue siendo ≥ 44 px.
+ */
+@media (max-width: 23.5rem) {
+    .cf-turnstile > * {
+        transform: scale(0.8);
+        transform-origin: 0 0;
     }
 }

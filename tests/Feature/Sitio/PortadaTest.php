@@ -182,3 +182,60 @@ it('el pie muestra solo los datos de contacto configurados', function () {
         ->and($html)->toContain('No es un servicio del Estado ni de ningún municipio')
         ->and($html)->not->toContain('mailto:');
 });
+
+it('el skip link usa el anillo claro de la barra: el acento sobre el acento profundo medía 1,81:1', function () {
+    $html = $this->get('/')->getContent();
+
+    preg_match('/<a href="#contenido"[^>]*class="([^"]*)"/', $html, $m);
+
+    expect($m)->not->toBeEmpty()
+        ->and($m[1])->toContain('focus-visible:outline-(--marca-realce-claro)');
+});
+
+it('el resumen de errores enlaza a un control enfocable y no a un fieldset', function () {
+    $html = $this->withHeaders(['Origin' => 'http://localhost', 'Sec-Fetch-Site' => 'same-origin'])
+        ->post('/lista-de-espera', ['email' => 'ana@example.com', 'consent' => '1', 'interests' => ['no-existe']])
+        ->getContent();
+
+    expect($html)->toContain('href="#campo-interests"')
+        ->and($html)->toMatch('/<input\s+id="campo-interests"\s+type="checkbox"/')
+        ->and($html)->not->toMatch('/<fieldset id="campo-interests"/');
+});
+
+it('el desplazamiento suave respeta prefers-reduced-motion', function () {
+    $css = (string) file_get_contents(resource_path('css/sitio.css'));
+
+    preg_match_all('/scroll-behavior:\s*smooth/', $css, $todas, PREG_OFFSET_CAPTURE);
+    expect($todas[0])->toHaveCount(1);
+
+    $antes = substr($css, 0, $todas[0][0][1]);
+    expect(strrpos($antes, '@media (prefers-reduced-motion: no-preference)'))->not->toBeFalse();
+});
+
+it('al responder 422 el foco va al resumen de errores y las casillas miden 24 px', function () {
+    $html = $this->withHeaders(['Origin' => 'http://localhost', 'Sec-Fetch-Site' => 'same-origin'])
+        ->post('/lista-de-espera', [])
+        ->getContent();
+
+    // Sin JavaScript, `autofocus` es la única forma de mover el foco tras una respuesta de servidor.
+    expect($html)->toMatch('/<div[^>]*id="errores"[^>]*autofocus/')
+        ->and($html)->not->toContain('size-5');
+});
+
+it('las casillas y opciones las dibuja el sitio con tokens: sin accent-color nativo (3,04:1 en oscuro)', function () {
+    $css = (string) file_get_contents(resource_path('css/sitio.css'));
+
+    expect($css)->toContain("input[type='checkbox']")
+        ->and($css)->toMatch('/appearance:\s*none/')
+        ->and($css)->toContain('border: 2px solid var(--sitio-atenuado)');
+
+    foreach (['sitio/portada', 'lista/confirmada'] as $vista) {
+        expect((string) file_get_contents(resource_path("views/{$vista}.blade.php")))->not->toContain('accent-(');
+    }
+});
+
+it('el widget de Turnstile se reduce en teléfonos angostos para no desbordar a 320 px', function () {
+    $css = (string) file_get_contents(resource_path('css/sitio.css'));
+
+    expect($css)->toMatch('/@media \(max-width: 23\.5rem\)\s*\{\s*\.cf-turnstile > \*\s*\{[^}]*scale\(0\.8\)/');
+});

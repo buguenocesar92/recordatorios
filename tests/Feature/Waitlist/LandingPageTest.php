@@ -41,7 +41,7 @@ it('la portada dice qué es, qué no es, y trae el formulario de la lista de esp
     expect(preg_match_all('#<option value="\d{5}"#', $selector[0]))->toBe(346);
 
     foreach (ObligationTypeCode::values() as $codigo) {
-        expect($html)->toMatch('#<input type="checkbox" name="interests\[\]" value="'.$codigo.'"#');
+        expect($html)->toMatch('#<input[^>]*type="checkbox" name="interests\[\]" value="'.$codigo.'"#');
     }
 });
 

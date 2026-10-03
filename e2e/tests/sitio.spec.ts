@@ -71,3 +71,41 @@ test('se recorre con el teclado: el primer foco es el salto al contenido y se ll
   expect(paradas).toContain('Ingresar');
   expect(paradas.some((p) => p.length > 0)).toBe(true);
 });
+
+for (const ancho of [320, 360]) {
+  test(`la portada no se desborda a ${ancho}px con el widget de Turnstile cargado (WCAG 1.4.10)`, async ({ page }) => {
+    await page.setViewportSize({ width: ancho, height: 640 });
+    await page.goto('/');
+    // Sin `networkidle`: el widget de Turnstile consulta a Cloudflare sin parar.
+    await page.waitForSelector('.cf-turnstile iframe', { timeout: 15_000 }).catch(() => {});
+
+    const medidas = await page.evaluate(() => ({
+      documento: document.documentElement.scrollWidth,
+      ventana: document.documentElement.clientWidth,
+    }));
+    expect(medidas.documento, `scrollWidth ${medidas.documento} en ${medidas.ventana}px`).toBeLessThanOrEqual(medidas.ventana);
+  });
+}
+
+test('el skip link enfocado tiene un anillo de ≥ 3:1 contra la barra en los dos modos', async ({ page }) => {
+  for (const modo of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: modo });
+    await page.goto('/');
+    await page.keyboard.press('Tab');
+    const colores = await page.evaluate(() => {
+      const enlace = document.activeElement as HTMLElement;
+      return {
+        anillo: getComputedStyle(enlace).outlineColor,
+        barra: getComputedStyle(document.querySelector('header')!).backgroundColor,
+      };
+    });
+    const canales = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const lum = ([r, g, b]: number[]) => {
+      const f = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const [a, b] = [lum(canales(colores.anillo)), lum(canales(colores.barra))];
+    const razon = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    expect(razon, `${modo}: anillo ${colores.anillo} sobre ${colores.barra}`).toBeGreaterThanOrEqual(3);
+  }
+});
