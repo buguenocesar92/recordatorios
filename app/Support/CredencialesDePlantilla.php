@@ -41,11 +41,17 @@ final class CredencialesDePlantilla
 
     public static function comprobar(): void
     {
-        if (! app()->environment('production')) {
+        if (blank(config('app.key'))) {
             return;
         }
 
-        if (blank(config('app.key'))) {
+        // Staging y cualquier entorno que no sea local/testing: las claves de
+        // prueba de Turnstile dejan pasar a cualquier bot.
+        if (! app()->environment('production', 'local', 'testing')) {
+            self::comprobarTurnstile();
+        }
+
+        if (! app()->environment('production')) {
             return;
         }
 
@@ -87,6 +93,18 @@ final class CredencialesDePlantilla
             );
         }
 
+        self::comprobarTurnstile();
+
+        if (trim((string) config('services.turnstile.hostname')) === '') {
+            throw new RuntimeException(
+                'Falta TURNSTILE_HOSTNAME (el dominio público de la landing). Sin él, el servidor no comprueba '
+                .'en qué sitio se resolvió el desafío y acepta tokens de cualquier otro.'
+            );
+        }
+    }
+
+    private static function comprobarTurnstile(): void
+    {
         $secreto = (string) config('services.turnstile.secret');
         $sitekey = (string) config('services.turnstile.sitekey');
 
@@ -96,13 +114,6 @@ final class CredencialesDePlantilla
             throw new RuntimeException(
                 'Turnstile sin claves propias (TURNSTILE_SITEKEY / TURNSTILE_SECRET): vacías o de prueba. '
                 .'Con ellas la lista de espera queda sin anti-bots.'
-            );
-        }
-
-        if (trim((string) config('services.turnstile.hostname')) === '') {
-            throw new RuntimeException(
-                'Falta TURNSTILE_HOSTNAME (el dominio público de la landing). Sin él, el servidor no comprueba '
-                .'en qué sitio se resolvió el desafío y acepta tokens de cualquier otro.'
             );
         }
     }

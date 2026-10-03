@@ -40,6 +40,15 @@ final class Turnstile implements ValidationRule
             return;
         }
 
+        // Sin secreto no hay verificación posible: se rechaza en vez de preguntarle
+        // a Cloudflare con una clave vacía.
+        if ((string) config('services.turnstile.secret') === '') {
+            Log::error('turnstile: sin clave secreta configurada');
+            $fail(self::MENSAJE);
+
+            return;
+        }
+
         try {
             $respuesta = Http::asForm()
                 ->timeout((int) config('services.turnstile.timeout', 5))

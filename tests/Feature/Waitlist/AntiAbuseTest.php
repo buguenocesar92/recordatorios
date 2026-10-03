@@ -146,3 +146,43 @@ it('la regla de Turnstile es implícita: falla con el campo ausente aunque nadie
     expect($validador->fails())->toBeTrue();
     Http::assertNothingSent();
 });
+
+it('en staging con las claves vacías, un token «válido» no inscribe a nadie (falla cerrado, sin llamar a Cloudflare)', function () {
+    app()['env'] = 'staging';
+    config()->set('services.turnstile.secret', '');
+    config()->set('services.turnstile.sitekey', '');
+    turnstileResponde(true);
+
+    enviarLista()->assertStatus(422)->assertSee('id="error-turnstile"', false);
+
+    expect(WaitlistSignup::count())->toBe(0);
+    Http::assertNothingSent();
+});
+
+it('las claves de prueba de Turnstile salen de config/services.php solo en local y testing', function (string $entorno, bool $usaPrueba) {
+    // Proceso aparte con un `env()` mínimo: el del framework de este proceso ya
+    // leyó el entorno de la suite (APP_ENV=testing) y no se puede reescribir.
+    $codigo = 'function env($k, $d = null) { $v = getenv($k); return $v === false ? $d : $v; } '
+        .'echo json_encode(require '.var_export(config_path('services.php'), true).');';
+
+    $proceso = proc_open(
+        [PHP_BINARY, '-r', $codigo],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $tuberias,
+        null,
+        ['APP_ENV' => $entorno, 'TURNSTILE_SITEKEY' => '', 'TURNSTILE_SECRET' => ''],
+    );
+    $salida = stream_get_contents($tuberias[1]);
+    proc_close($proceso);
+
+    $servicios = json_decode($salida, true, 512, JSON_THROW_ON_ERROR);
+
+    expect($servicios['turnstile']['secret'] !== '')->toBe($usaPrueba)
+        ->and($servicios['turnstile']['sitekey'] !== '')->toBe($usaPrueba);
+})->with([
+    'local' => ['local', true],
+    'testing' => ['testing', true],
+    'staging' => ['staging', false],
+    'production' => ['production', false],
+    'mal escrito' => ['produccion', false],
+]);

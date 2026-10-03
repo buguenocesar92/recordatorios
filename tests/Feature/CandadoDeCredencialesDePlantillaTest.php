@@ -129,3 +129,24 @@ it('en producción no arranca sin el hostname de Turnstile (sin él, un token de
 
     CredencialesDePlantilla::comprobar();
 })->throws(RuntimeException::class, 'TURNSTILE_HOSTNAME');
+
+it('en staging no arranca con Turnstile vacío o de prueba, aunque no sea producción', function (string $sitekey, string $secreto) {
+    app()['env'] = 'staging';
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('services.turnstile.sitekey', $sitekey);
+    config()->set('services.turnstile.secret', $secreto);
+
+    CredencialesDePlantilla::comprobar();
+})->with([
+    'vacías' => ['', ''],
+    'de prueba' => ['1x00000000000000000000AA', '1x0000000000000000000000000000000AA'],
+])->throws(RuntimeException::class, 'Turnstile');
+
+it('en local y testing sí se permiten las claves de prueba de Turnstile', function (string $entorno) {
+    app()['env'] = $entorno;
+    config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+    config()->set('services.turnstile.sitekey', '1x00000000000000000000AA');
+    config()->set('services.turnstile.secret', '1x0000000000000000000000000000000AA');
+
+    CredencialesDePlantilla::comprobar();
+})->with(['local', 'testing'])->throwsNoExceptions();
