@@ -57,8 +57,12 @@ if [ $# -gt 0 ]; then
     exec su-exec "$APP_USER" "$@"
 fi
 
-echo "🚀 Migraciones (idempotente, SIN datos demo)..."
-como_app php artisan migrate --force
+# Las migraciones NO se aplican acá, a propósito (regla del dueño: nunca se
+# aplican solas a producción). Cada arranque, reinicio o rollback del
+# contenedor las habría corrido sin que nadie viera el SQL. Se genera con
+# `make migraciones-sql` (docs/migraciones/<fecha>.sql), se revisa y se aplica a
+# mano: ver el runbook de 0.8 en README.md. Lo vigila
+# tests/Guardrails/MigracionesNoSeAplicanSolasEnProduccionTest.php.
 
 echo "🛡  Generando permisos de Shield (idempotente)..."
 como_app php artisan shield:generate --all --option=permissions --panel=admin --no-interaction || true

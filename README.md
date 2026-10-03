@@ -214,6 +214,34 @@ hay que hacer o saber al desplegar y al empezar la V1.
 4. Con `ADMIN_VPN_CIDR` vacío, el panel responde 404 en **todo** entorno que no sea
    `local` o `testing` (staging incluido): no es un olvido, es el comportamiento seguro.
 
+### Migraciones en producción: las aplica César, nunca el arranque
+
+Regla del dueño: **las migraciones no se aplican solas a producción.** Ni el entrypoint
+(`docker/docker-entrypoint.prod.sh`) ni el workflow de despliegue ejecutan
+`artisan migrate`; lo vigila `tests/Guardrails/MigracionesNoSeAplicanSolasEnProduccionTest.php`.
+Un reinicio o un despliegue con una migración nueva deja el código nuevo sobre el
+esquema viejo hasta que César aplica el SQL: por eso se aplica **antes** de lanzar el
+despliegue, y la migración tiene que ser compatible hacia atrás con el código anterior.
+
+1. **Generar el SQL** (en el equipo de desarrollo, con los contenedores arriba):
+   `make migraciones-sql` escribe `docs/migraciones/<fecha>.sql`. Corre
+   `migrate --pretend` contra una base desechable y vacía (`sistema_migsql`, se borra al
+   terminar), así que **no toca ninguna base real** y el archivo trae el esquema
+   completo. Al final lleva un `INSERT` por migración en la tabla `migrations`.
+2. **Revisarlo**: leer cada bloque `-- Migración: …`. Las líneas `select` son sondeos de
+   migraciones que dependen de datos existentes (renombrar permisos Shield, olvidar
+   tokens de sesión): en una base nueva no hacen nada; si la base ya tiene datos, leer la
+   migración PHP correspondiente antes de seguir.
+3. **Primera vez (base vacía)**: tomar respaldo de la base y aplicar el archivo entero con
+   el cliente de MariaDB del servidor (`mariadb -u<usuario> -p <base> < 2026-…sql`).
+4. **Migraciones nuevas (base que ya tiene el esquema)**: no se reaplica el archivo entero.
+   Se ejecutan solo los bloques `-- Migración: …` de las migraciones que **no** estén ya
+   en `SELECT migration FROM migrations`, más su `INSERT INTO migrations`, que es lo que
+   evita que un `artisan migrate` futuro las crea pendientes.
+5. **Después** de aplicar el SQL, lanzar el despliegue (el workflow ya no migra). Para
+   comprobar el estado desde el servidor, solo lectura:
+   `docker compose … exec app php artisan migrate:status`.
+
 ### Riesgos aceptados
 
 - **Canal lateral de tiempo en el alta (revisión, hallazgo 4).** El cuerpo de la respuesta

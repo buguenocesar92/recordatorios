@@ -14,7 +14,7 @@ ARTISAN := $(EXEC) php artisan
 
 .DEFAULT_GOAL := help
 .PHONY: help init up down restart rebuild logs ps shell tinker \
-        migrate fresh seed doctor test e2e manual pint pint-test new \
+        migrate migraciones-sql fresh seed doctor test e2e manual pint pint-test new \
         demo-preparar demo-grabar demo-curso demo-auditar
 
 help: ## Muestra esta ayuda
@@ -52,6 +52,12 @@ tinker: ## Abre Laravel Tinker
 ## ── Base de datos ────────────────────────────────────────────────────────────
 migrate: ## Ejecuta migraciones pendientes
 	$(ARTISAN) migrate
+
+migraciones-sql: ## Escribe en docs/migraciones/<fecha>.sql el SQL de las migraciones, para REVISAR (prod nunca migra sola)
+	@# Regla del dueño: las migraciones no se aplican solas a producción. Esto
+	@# corre `migrate --pretend` contra una base desechable y deja el SQL escrito;
+	@# él lo revisa y lo aplica a mano (README.md, runbook de 0.8).
+	@sh tools/migraciones-sql.sh
 
 fresh: ## Recrea la BD desde cero y siembra
 	$(ARTISAN) migrate:fresh --seed

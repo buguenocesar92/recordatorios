@@ -174,8 +174,10 @@ jobs:
           $COMPOSE pull
           $COMPOSE up -d
 
-          # 4. Migra y compila las cachés de configuración, rutas, vistas y eventos.
-          $COMPOSE exec -T --user www-data app php artisan migrate --force
+          # 4. Compila las cachés de configuración, rutas, vistas y eventos.
+          #    NO migra: las migraciones nunca se aplican solas a producción.
+          #    El dueño revisa el SQL de `make migraciones-sql` y lo aplica a mano
+          #    (README.md, runbook de 0.8) ANTES de lanzar el despliegue.
           $COMPOSE exec -T --user www-data app php artisan config:cache
           $COMPOSE exec -T --user www-data app php artisan route:cache
           $COMPOSE exec -T --user www-data app php artisan event:cache
