@@ -46,7 +46,7 @@ async function peorInteraccion(page: any) {
 
 test('el panel responde dentro del presupuesto de interacción', async ({ page }) => {
     await page.goto('/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.locator('.fi-wi-widget').first()).toBeVisible({ timeout: 20_000 });
 
     // Un margen corto para que el panel termine de montarse. Nadie hace clic en
@@ -76,7 +76,7 @@ test('el panel responde dentro del presupuesto de interacción', async ({ page }
     const enlace = page.locator('.fi-sidebar-item a').nth(1);
     if (await enlace.count()) {
         await enlace.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
         await page.waitForTimeout(400);
     }
 

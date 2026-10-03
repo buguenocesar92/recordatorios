@@ -16,7 +16,7 @@ const PANTALLAS = ['/', '/admin', '/admin/usuarios', '/admin/usuarios/create'];
 for (const ruta of PANTALLAS) {
   test(`${ruta}: no se desborda a lo ancho`, async ({ page }) => {
     await page.goto(ruta);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     const desborde = await page.evaluate(() => ({
       documento: document.documentElement.scrollWidth,
@@ -41,7 +41,7 @@ for (const ruta of ['/', '/admin']) {
     // WCAG 2.2 pide 24×24 px como mínimo. En terreno, con guantes o al sol, un
     // botón de 20px se falla más veces de las que se acierta.
     await page.goto(ruta);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     const pequenos = await page.evaluate(() => {
       const MINIMO = 24;

@@ -18,7 +18,7 @@ import { expect, test, type Page } from '@playwright/test';
 /** Lo que el navegador reporta de verdad, no lo que estimamos. */
 async function medir(page: Page, ruta: string) {
   await page.goto(ruta);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
 
   return page.evaluate(() => new Promise<{ lcp: number; cls: number; ttfb: number }>((resolve) => {
     let lcp = 0;

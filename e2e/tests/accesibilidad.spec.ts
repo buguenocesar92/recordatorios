@@ -139,7 +139,7 @@ for (const pantalla of PANTALLAS) {
       await prepararModo(page, modo);
 
       const respuesta = await page.goto(pantalla.ruta);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Primero, que la pantalla exista: un 403 o un 500 devuelven la página de
       // error de Laravel, que no lleva la clase «dark» y casi no tiene texto.
@@ -226,7 +226,7 @@ test('el panel se recorre entero con el teclado', async ({ page }) => {
   // Quien no puede usar el ratón tiene que poder llegar a todo. Y el foco tiene
   // que VERSE: un anillo invisible es lo mismo que no tenerlo.
   await page.goto('/admin');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
 
   const paradas: string[] = [];
 

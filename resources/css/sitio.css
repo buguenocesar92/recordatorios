@@ -22,6 +22,7 @@
 
 @source '../views/sitio';
 @source '../views/components/sitio';
+@source '../views/lista';
 
 /* ── Primitivos de la entidad ─────────────────────────────────────────────
    20 tokens, todos obligatorios (contrato en tools/paletas-de-entidad.php).

@@ -12,7 +12,7 @@ const NORMAS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 async function abrirEnModo(page: Page, modo: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: modo });
   const respuesta = await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
   expect(respuesta?.status(), 'la portada no respondió 200').toBe(200);
 }
 
