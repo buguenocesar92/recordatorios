@@ -35,6 +35,7 @@ use InvalidArgumentException;
  * @property Carbon|null $confirmed_at
  * @property bool|null $paid_penalty_last_year
  * @property Carbon|null $unsubscribed_at
+ * @property Carbon|null $created_at
  */
 class WaitlistSignup extends Model
 {
@@ -105,10 +106,43 @@ class WaitlistSignup extends Model
         return hash_hmac('sha256', 'ip|'.(string) $ip, (string) config('waitlist.hash_salt'));
     }
 
-    /** @param  Builder<WaitlistSignup>  $query */
+    /**
+     * Sin confirmar y vencida, o pasada la vida máxima absoluta desde
+     * created_at (aunque alguien haya «refrescado» el vencimiento).
+     *
+     * @param  Builder<WaitlistSignup>  $query
+     */
     public function scopeExpiredUnconfirmed(Builder $query): void
     {
-        $query->whereNull('confirmed_at')->where('confirm_expires_at', '<', now());
+        $query->whereNull('confirmed_at')->where(function (Builder $q): void {
+            $q->where('confirm_expires_at', '<', now())
+                ->orWhere('created_at', '<', now()->subHours(self::vidaMaximaSinConfirmar()));
+        });
+    }
+
+    public static function vidaMaximaSinConfirmar(): int
+    {
+        return (int) config('waitlist.unconfirmed_max_lifetime_hours', 168);
+    }
+
+    /** Si ya pasó la vida máxima absoluta desde que se creó. */
+    public function superoLaVidaMaxima(): bool
+    {
+        return $this->created_at !== null && $this->created_at->copy()->addHours(self::vidaMaximaSinConfirmar())->lessThanOrEqualTo(now());
+    }
+
+    /** Vencimiento del enlace: 72 h desde ahora, nunca más allá de la vida máxima. */
+    public function vencimientoDeConfirmacion(): Carbon
+    {
+        $porTtl = now()->addHours((int) config('waitlist.confirm_ttl_hours', 72));
+
+        if ($this->created_at === null) {
+            return $porTtl;
+        }
+
+        $tope = $this->created_at->copy()->addHours(self::vidaMaximaSinConfirmar());
+
+        return $porTtl->lessThan($tope) ? $porTtl : $tope;
     }
 
     public function markConfirmed(): void

@@ -26,6 +26,10 @@ return [
 
     'confirm_ttl_hours' => 72,
 
+    // Vida máxima ABSOLUTA de una inscripción sin confirmar, contada desde
+    // created_at: reinscribir el correo de otro cada 24 h ya no la alarga.
+    'unconfirmed_max_lifetime_hours' => 168,
+
     'resend_cooldown_hours' => 24,
 
     // Cuánto se conserva en failed_jobs un envío de confirmación fallido.

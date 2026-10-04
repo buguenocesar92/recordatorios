@@ -77,15 +77,35 @@ final class SignupService
             return null;
         }
 
+        // Pasada la vida máxima desde created_at, se empieza de cero: la vieja
+        // no se «refresca» (cualquiera puede escribir el correo de otro).
+        if ($existente !== null && $existente->superoLaVidaMaxima()) {
+            $existente->delete();
+            $existente = null;
+        }
+
         $signup = $existente ?? new WaitlistSignup(['email' => $email]);
-        $signup->fill([
-            'comuna_id' => $comunaCode !== null ? Comuna::query()->where('code', $comunaCode)->value('id') : null,
-            'interests' => array_values(array_unique($interests)),
-            'consent_version' => VersionDelConsentimiento::actual(),
-            'consented_at' => now(),
-            'ip_hash' => WaitlistSignup::hashIp($ip),
-            'confirm_expires_at' => now()->addHours((int) config('waitlist.confirm_ttl_hours', 72)),
-        ])->save();
+
+        // Con una inscripción vigente, una reinscripción (quizás de un tercero)
+        // NO pisa la comuna, los intereses ni el consentimiento de su dueño:
+        // solo se le vuelve a mandar el enlace.
+        $vigente = $existente !== null && $existente->confirm_expires_at !== null && $existente->confirm_expires_at->isFuture();
+
+        if (! $vigente) {
+            $signup->fill([
+                'comuna_id' => $comunaCode !== null ? Comuna::query()->where('code', $comunaCode)->value('id') : null,
+                'interests' => array_values(array_unique($interests)),
+                'consent_version' => VersionDelConsentimiento::actual(),
+                'consented_at' => now(),
+                'ip_hash' => WaitlistSignup::hashIp($ip),
+            ]);
+        }
+
+        if (! $signup->exists) {
+            $signup->save();
+        }
+
+        $signup->forceFill(['confirm_expires_at' => $signup->vencimientoDeConfirmacion()])->save();
 
         RateLimiter::hit($clave, $horas * 3600);
 

@@ -72,7 +72,7 @@ final class EnviarConfirmacionDeLista implements ShouldQueue
 
         $signup->forceFill([
             'confirm_token_hash' => ConfirmationToken::hash($token),
-            'confirm_expires_at' => now()->addHours((int) config('waitlist.confirm_ttl_hours', 72)),
+            'confirm_expires_at' => $signup->vencimientoDeConfirmacion(),
         ])->save();
 
         try {
