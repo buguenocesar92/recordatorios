@@ -77,3 +77,71 @@ it('existe make migraciones-sql para generar el SQL a revisar', function () {
         ->and(file_exists(base_path('tools/migraciones-sql.sh')))->toBeTrue()
         ->and(glob(base_path('docs/migraciones/*.sql')))->not->toBeEmpty();
 });
+
+/**
+ * Ejecuta el tramo de decisión del entrypoint de desarrollo con un APP_ENV dado
+ * y devuelve si habría migrado y sembrado. Se sustituye `php artisan` por un eco
+ * para no tocar la base.
+ */
+function decisionDelEntrypointDev(?string $appEnv): string
+{
+    $script = (string) file_get_contents(base_path('docker-entrypoint.sh'));
+
+    preg_match('/^APP_ENV_EFECTIVO=.*?^esac$/ms', $script, $decision);
+    preg_match('/^# Producción nunca migra sola.*?(?=^# --option=permissions)/ms', $script, $migrar);
+    preg_match('/^# Los seeders cargan.*?^fi$/ms', $script, $sembrar);
+
+    expect($decision)->not->toBeEmpty()
+        ->and($migrar)->not->toBeEmpty()
+        ->and($sembrar)->not->toBeEmpty();
+
+    $cuerpo = str_replace('php artisan', 'echo EJECUTA', $decision[0]."\n".$migrar[0]."\n".$sembrar[0]);
+    // Sin /app/.env real: se prueba solo la variable del proceso.
+    $cuerpo = str_replace('/app/.env', '/nonexistent/.env', $cuerpo);
+
+    $prefijo = $appEnv === null ? 'unset APP_ENV;' : 'APP_ENV='.escapeshellarg($appEnv).'; export APP_ENV;';
+
+    return (string) shell_exec('sh -c '.escapeshellarg($prefijo."\n".$cuerpo).' 2>&1');
+}
+
+it('el entrypoint de desarrollo no migra ni siembra con APP_ENV=production', function () {
+    expect(decisionDelEntrypointDev('production'))
+        ->not->toContain('EJECUTA migrate')
+        ->not->toContain('EJECUTA db:seed');
+});
+
+it('el entrypoint de desarrollo no migra ni siembra con APP_ENV vacío, ausente o desconocido', function (?string $valor) {
+    expect(decisionDelEntrypointDev($valor))
+        ->not->toContain('EJECUTA migrate')
+        ->not->toContain('EJECUTA db:seed');
+})->with([[''], [null], ['prod'], ['staging'], ['Production']]);
+
+it('el entrypoint de desarrollo sí migra y siembra con APP_ENV=local', function () {
+    expect(decisionDelEntrypointDev('local'))
+        ->toContain('EJECUTA migrate --force')
+        ->toContain('EJECUTA db:seed --force');
+});
+
+it('todo servicio del compose de producción usa el entrypoint de producción o lleva command', function () {
+    $prod = (string) file_get_contents(base_path('docker-compose.prod.yml'));
+    $base = (string) file_get_contents(base_path('docker-compose.yml'));
+
+    preg_match_all('/^  (\w+):\R/m', explode('volumes:', $prod)[0], $nombres);
+
+    foreach ($nombres[1] as $servicio) {
+        $bloqueProd = bloqueDeServicioProd($servicio);
+        // Solo importan los servicios que corren la imagen de la aplicación.
+        if (! str_contains($bloqueProd, 'APP_IMAGE')) {
+            continue;
+        }
+
+        $conEntrypointProd = (bool) preg_match('#^\s*entrypoint:\s*\["/app/docker/docker-entrypoint\.prod\.sh"\]#m', $bloqueProd);
+        preg_match('/^  '.preg_quote($servicio, '/').':\R(.*?)(?=^  \S|\z)/ms', $base, $m);
+        $conCommand = preg_match('/^\s*command:/m', $m[1] ?? '') === 1 || str_contains($bloqueProd, 'command:');
+
+        expect($conEntrypointProd || $conCommand)
+            ->toBeTrue("El servicio {$servicio} de producción podría llegar a migrate/seed");
+        // Y en producción el entorno está fijado, para que el entrypoint de la imagen no dude.
+        expect($bloqueProd)->toContain('APP_ENV=production');
+    }
+});

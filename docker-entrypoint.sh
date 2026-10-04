@@ -62,6 +62,20 @@ mkdir -p /app/storage/framework/cache/data \
     fi
 ) 9>/app/storage/framework/.appkey.lock   # en /app, que SÍ es compartido; /tmp es de cada contenedor
 
+# Entorno efectivo, para decidir si este arranque puede migrar y sembrar.
+# La variable del proceso manda (producción la fija en el compose); en
+# desarrollo no viene del compose sino de /app/.env, así que se lee de ahí.
+APP_ENV_EFECTIVO="${APP_ENV:-}"
+if [ -z "$APP_ENV_EFECTIVO" ] && [ -f /app/.env ]; then
+    APP_ENV_EFECTIVO="$(grep -m1 '^APP_ENV=' /app/.env | cut -d= -f2- | tr -d "\"' \r")"
+fi
+# Lista blanca y no «distinto de production»: con APP_ENV vacío o con un valor
+# desconocido (typo, «prod», «staging») NO se migra ni se siembra. Fail-safe.
+case "$APP_ENV_EFECTIVO" in
+    local|development|testing) PUEDE_MIGRAR=1 ;;
+    *) PUEDE_MIGRAR=0 ;;
+esac
+
 echo "⏳ Esperando a MariaDB..."
 until php artisan db:show >/dev/null 2>&1; do
     sleep 2
@@ -82,8 +96,15 @@ php artisan filament:clear-cached-components || true
 echo "🔗 Sincronizando Storage..."
 php artisan storage:link --force
 
-echo "🚀 Ejecutando Migraciones..."
-php artisan migrate --force
+# Producción nunca migra sola (regla del dueño: el SQL se revisa y se aplica a
+# mano, ver `make migraciones-sql`). Este es el entrypoint de la imagen: un
+# servicio de producción que no redefina `entrypoint:` pasaría por acá.
+if [ "$PUEDE_MIGRAR" = "1" ]; then
+    echo "🚀 Ejecutando Migraciones..."
+    php artisan migrate --force
+else
+    echo "⏭  APP_ENV='${APP_ENV_EFECTIVO}': no se migra (solo local/development/testing)."
+fi
 
 # --option=permissions: SOLO los permisos. Sin esta opción, shield:generate
 # además REESCRIBE las policies en disco con el formato crudo de su plantilla y
@@ -95,8 +116,13 @@ php artisan migrate --force
 echo "🛡  Generando permisos de Shield..."
 php artisan shield:generate --all --panel=admin --option=permissions --no-interaction || true
 
-echo "🌱 Sembrando datos..."
-php artisan db:seed --force
+# Los seeders cargan datos de demostración: nunca fuera de desarrollo.
+if [ "$PUEDE_MIGRAR" = "1" ]; then
+    echo "🌱 Sembrando datos..."
+    php artisan db:seed --force
+else
+    echo "⏭  APP_ENV='${APP_ENV_EFECTIVO}': no se siembra."
+fi
 
 echo "⚡ Iniciando Octane (FrankenPHP worker mode + watch)..."
 exec php artisan octane:start \
