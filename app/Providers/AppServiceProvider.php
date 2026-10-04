@@ -241,12 +241,14 @@ class AppServiceProvider extends ServiceProvider
         // previsualización no llevan snapshot que verificar, así que Livewire no les
         // reaplica nada. De fábrica quedan con «web» a secas —sin «auth» ni el segundo
         // factor—, y cada uno expone su propio punto de extensión para arreglarlo.
+        // La VPN también: sin ella, una sesión robada subía archivos desde fuera.
         config()->set('livewire.temporary_file_upload.middleware', [
+            SoloDesdeLaVpn::class,
             'throttle:60,1',
             'auth',
             'mfa',
         ]);
-        FilePreviewController::$middleware = ['web', 'auth', 'mfa'];
+        FilePreviewController::$middleware = ['web', SoloDesdeLaVpn::class, 'auth', 'mfa'];
 
         // La policy de un modelo que vive FUERA de App\Models hay que registrarla a mano:
         // el descubrimiento automático de Laravel busca la policy en el namespace del
