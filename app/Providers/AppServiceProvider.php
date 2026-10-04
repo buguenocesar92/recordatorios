@@ -15,6 +15,7 @@ use App\Support\CredencialesDePlantilla;
 use App\Support\ProxiesDeConfianza;
 use App\Support\Sitio\Sitemap;
 use App\Support\VerificadorDeFiltraciones;
+use App\Waitlist\ClaveDeOrigen;
 use Filament\Auth\Notifications\ResetPassword as ResetPasswordDelPanel;
 use Filament\Forms\Components\FileUpload;
 use Filament\Support\Facades\FilamentView;
@@ -309,8 +310,14 @@ class AppServiceProvider extends ServiceProvider
         $demasiados = fn (Request $request, array $cabeceras) => response(view('lista.demasiados')->render(), 429, $cabeceras);
 
         RateLimiter::for('waitlist-ip', fn (Request $request): array => [
+            // Por IP (IPv6 agrupada por /64: ver ClaveDeOrigen).
             Limit::perMinute((int) config('waitlist.ip_attempts_per_minute', 5))
-                ->by('waitlist-ip:'.WaitlistSignup::hashIp($request->ip()))
+                ->by('waitlist-ip:'.WaitlistSignup::hashIp(ClaveDeOrigen::de($request->ip())))
+                ->response($demasiados),
+            // Por dominio del correo: el límite por correo no frena miles de
+            // direcciones distintas contra una misma organización.
+            Limit::perMinute((int) config('waitlist.domain_attempts_per_minute', 20))
+                ->by('waitlist-dominio:'.hash('sha256', self::dominioDelCorreo($request->input('email'))))
                 ->response($demasiados),
             // Global: el por-IP no frena a quien rota direcciones.
             Limit::perMinute((int) config('waitlist.global_attempts_per_minute', 60))
@@ -319,6 +326,15 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         RateLimiter::for('waitlist-token', fn (Request $request): Limit => Limit::perMinute(30)
-            ->by('waitlist-token:'.WaitlistSignup::hashIp($request->ip())));
+            ->by('waitlist-token:'.WaitlistSignup::hashIp(ClaveDeOrigen::de($request->ip()))));
+    }
+
+    private static function dominioDelCorreo(mixed $email): string
+    {
+        if (! is_string($email) || ! str_contains($email, '@')) {
+            return '';
+        }
+
+        return mb_strtolower(trim(substr((string) strrchr($email, '@'), 1)));
     }
 }

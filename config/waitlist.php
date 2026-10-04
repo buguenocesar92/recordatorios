@@ -26,7 +26,11 @@ return [
     // Cuánto se conserva en failed_jobs un envío de confirmación fallido.
     'failed_job_retention_hours' => 24,
 
+    // Por IP; en IPv6 cuenta el /64 entero (App\Waitlist\ClaveDeOrigen).
     'ip_attempts_per_minute' => 5,
+
+    // Por dominio del correo (miles de direcciones contra una misma organización).
+    'domain_attempts_per_minute' => 20,
 
     // Tope GLOBAL del formulario (todas las IPs juntas): el por-IP no frena a
     // quien rota direcciones, y cada alta que pasa cuesta una llamada a
