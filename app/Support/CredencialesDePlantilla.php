@@ -24,7 +24,12 @@ use RuntimeException;
  *   esperado (TURNSTILE_HOSTNAME): sin él se acepta un token resuelto en
  *   cualquier otro sitio con la misma clave;
  * - TRUSTED_PROXIES vacío, con comodín o con rangos anchos;
- * - sin WAITLIST_PURGE_AFTER (la fecha en que se borra lo confirmado).
+ * - sin WAITLIST_PURGE_AFTER (la fecha en que se borra lo confirmado);
+ * - la cookie de sesión sin Secure, ADMIN_VPN_CIDR abierta a Internet o
+ *   ilegible, y APP_URL vacía, sin https o local.
+ *
+ * En staging (todo lo que no sea production/local/testing) se exigen también
+ * las claves propias de Turnstile y su hostname.
  *
  * Se llama como PRIMERA línea de AppServiceProvider::boot(). Sin clave de
  * aplicación no hay nada que proteger: es el arranque de `composer install`
@@ -52,6 +57,7 @@ final class CredencialesDePlantilla
         // prueba de Turnstile dejan pasar a cualquier bot.
         if (! app()->environment('production', 'local', 'testing')) {
             self::comprobarTurnstile();
+            self::comprobarHostnameDeTurnstile();
         }
 
         if (! app()->environment('production')) {
@@ -97,13 +103,7 @@ final class CredencialesDePlantilla
         }
 
         self::comprobarTurnstile();
-
-        if (trim((string) config('services.turnstile.hostname')) === '') {
-            throw new RuntimeException(
-                'Falta TURNSTILE_HOSTNAME (el dominio público de la landing). Sin él, el servidor no comprueba '
-                .'en qué sitio se resolvió el desafío y acepta tokens de cualquier otro.'
-            );
-        }
+        self::comprobarHostnameDeTurnstile();
 
         /** @var list<string> $proxies */
         $proxies = (array) config('proxies.confiables', []);
@@ -120,6 +120,73 @@ final class CredencialesDePlantilla
             throw new RuntimeException(
                 'Falta WAITLIST_PURGE_AFTER (fecha AAAA-MM-DD: lanzamiento más seis meses). El aviso de privacidad '
                 .'promete borrar lo confirmado en ese plazo y sin fecha se conservaría para siempre.'
+            );
+        }
+
+        // Fallo cerrado: vacío o ilegible cuenta como «no Secure».
+        if (filter_var(config('session.secure'), FILTER_VALIDATE_BOOL) !== true) {
+            throw new RuntimeException(
+                'SESSION_SECURE_COOKIE no es true. En producción la cookie de sesión del panel tiene que viajar solo por HTTPS.'
+            );
+        }
+
+        self::comprobarVpn();
+        self::comprobarUrlDeLaAplicacion();
+    }
+
+    private static function comprobarHostnameDeTurnstile(): void
+    {
+        if (trim((string) config('services.turnstile.hostname')) === '') {
+            throw new RuntimeException(
+                'Falta TURNSTILE_HOSTNAME (el dominio público de la landing). Sin él, el servidor no comprueba '
+                .'en qué sitio se resolvió el desafío y acepta tokens de cualquier otro.'
+            );
+        }
+    }
+
+    /**
+     * Vacía está bien (panel cerrado para todos). Lo que no: una subred que
+     * abarque Internet (/0, o más ancha que /8 en IPv4 o /16 en IPv6) o algo
+     * que no sea una IP: IpUtils lo trataría como «no coincide» y el error de
+     * configuración pasaría inadvertido.
+     */
+    private static function comprobarVpn(): void
+    {
+        foreach ((array) config('panel.vpn_cidr', []) as $entrada) {
+            [$ip, $prefijo] = array_pad(explode('/', (string) $entrada, 2), 2, null);
+            $esV4 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
+            $esV6 = ! $esV4 && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+            $minimo = $esV4 ? 8 : 16;
+            $maximo = $esV4 ? 32 : 128;
+
+            $valida = ($esV4 || $esV6)
+                && ($prefijo === null || (ctype_digit($prefijo) && (int) $prefijo >= $minimo && (int) $prefijo <= $maximo));
+
+            if (! $valida) {
+                throw new RuntimeException(
+                    'ADMIN_VPN_CIDR trae «'.$entrada.'»: abierta a todo Internet, demasiado ancha o no es una subred. '
+                    .'Va la subred de WireGuard (p. ej. 10.8.0.0/24).'
+                );
+            }
+        }
+    }
+
+    /**
+     * Los enlaces de los correos (confirmación, baja) y el dominio canónico
+     * salen de APP_URL: vacía, sin https o local, se mandan enlaces rotos o en
+     * claro.
+     */
+    private static function comprobarUrlDeLaAplicacion(): void
+    {
+        $url = (string) config('app.url');
+        $esquema = parse_url($url, PHP_URL_SCHEME);
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $locales = ['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0'];
+
+        if ($esquema !== 'https' || $host === '' || in_array($host, $locales, true) || str_ends_with($host, '.localhost')) {
+            throw new RuntimeException(
+                'APP_URL tiene que ser la dirección pública con https (no vacía ni local). De ella salen los enlaces '
+                .'de los correos y el dominio canónico.'
             );
         }
     }

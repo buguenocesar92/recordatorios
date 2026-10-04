@@ -47,8 +47,24 @@ mkdir -p storage/framework/cache storage/framework/sessions storage/framework/vi
          storage/app/public storage/logs bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
+# Primero, que la aplicación ARRANQUE (sin tocar la base). Si la guarda de
+# arranque (App\Support\CredencialesDePlantilla) se niega —TRUSTED_PROXIES,
+# APP_URL, SESSION_SECURE_COOKIE…—, el bucle de abajo esperaba a la base para
+# siempre con la salida tirada a /dev/null y el motivo no se veía nunca.
+if ! salida_arranque=$(como_app php artisan env 2>&1); then
+    echo "✘ La aplicación no arranca (no es la base de datos):" >&2
+    echo "$salida_arranque" >&2
+    exit 1
+fi
+
 echo "⏳ Esperando a MariaDB..."
-until php artisan db:show >/dev/null 2>&1; do
+intentos=0
+until salida_db=$(php artisan db:show 2>&1); do
+    intentos=$((intentos + 1))
+    if [ $((intentos % 15)) -eq 0 ]; then
+        echo "… MariaDB sigue sin responder (${intentos} intentos). Último error:" >&2
+        echo "$salida_db" | tail -n 5 >&2
+    fi
     sleep 2
 done
 

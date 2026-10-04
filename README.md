@@ -186,6 +186,11 @@ y no se despliega nada (tarea 0.8 detenida).
       proxy) y en producción es obligatorio y acotado (IP o subred ≥ /16; nunca `*` ni
       rangos RFC1918 completos). Si `.env.example` todavía trae los rangos privados como
       ejemplo, cambiarlos por la IP de Caddy en la red de Docker.
+    - Producción ahora **se niega a arrancar** además con: `SESSION_SECURE_COOKIE` distinto de
+      `true`, `ADMIN_VPN_CIDR` con `/0`, más ancha que /8 (v4) o /16 (v6) o ilegible, y
+      `APP_URL` vacía, sin `https` o local. En staging se exige `TURNSTILE_HOSTNAME`. El
+      entrypoint de producción imprime el motivo (`php artisan env`) en vez de quedarse
+      esperando a MariaDB.
 
 ## Derechos ARCOP de la lista de espera (Ley 21.719)
 
