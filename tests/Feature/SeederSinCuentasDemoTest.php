@@ -38,6 +38,22 @@ it('no crea cuentas de demostración cuando el entorno es de producción', funct
     );
 });
 
+it('tampoco las crea en staging ni en un entorno mal escrito: solo en local y testing', function (string $entorno) {
+    app()->detectEnvironment(fn (): string => $entorno);
+
+    (new RolesSeeder)->run();
+
+    expect(User::whereIn('email', ['admin@example.com', 'user@example.com'])->exists())->toBeFalse();
+})->with(['staging', 'prod', 'produccion', '']);
+
+it('en local sí las crea (para entrar sin trámite al desarrollar)', function () {
+    app()->detectEnvironment(fn (): string => 'local');
+
+    (new RolesSeeder)->run();
+
+    expect(User::where('email', 'admin@example.com')->exists())->toBeTrue();
+});
+
 it('sí siembra roles y permisos en producción: eso no es dato de demostración', function () {
     app()->detectEnvironment(fn (): string => 'production');
 

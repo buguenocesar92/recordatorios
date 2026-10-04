@@ -69,8 +69,11 @@ describe('seedersSinCredencialesEnProduccion', function () {
                 continue;
             }
 
+            // Vale la guarda clásica (no en producción) o, mejor, la lista blanca
+            // (solo local y testing), que además deja fuera staging y un
+            // APP_ENV mal escrito.
             expect($codigo)->toMatch(
-                "/environment\\(\\s*'production'\\s*\\)/",
+                "/environment\\(\\s*(?:'production'|\\[\\s*'local'\\s*,\\s*'testing'\\s*\\])\\s*\\)/",
                 basename($archivo).' escribe una contraseña literal sin preguntar por el entorno',
             );
         }

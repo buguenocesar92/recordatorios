@@ -58,7 +58,10 @@ class RolesSeeder extends Seeder
         // que corresponden a quien administra (ver SOLO_SUPER_ADMIN).
         $admin->syncPermissions(['access_panel_admin', ...$this->permisosDeAdministrador()]);
 
-        // Las cuentas de demostración NO se crean en producción: «admin@example.com»
+        // Lista blanca y no «todo menos producción»: staging o un APP_ENV mal
+        // escrito («prod») también exponían la cuenta de demostración.
+        //
+        // Las cuentas de demostración NO se crean fuera de local y testing: «admin@example.com»
         // con la contraseña «password» y el rol super_admin es una puerta trasera, y
         // este scaffold se clona a cada sistema municipal —la puerta se abriría una vez
         // por instalación—. En local sirven para entrar sin trámite y ahí sí se crean.
@@ -67,7 +70,7 @@ class RolesSeeder extends Seeder
         // la credencial de una cuenta que ya existe. Con updateOrCreate, un
         // `env:provision` de mantenimiento devolvía la contraseña del administrador real
         // a «password» sin que nadie lo notara.
-        if (! app()->environment('production')) {
+        if (app()->environment(['local', 'testing'])) {
             $adminUser = User::firstOrCreate(
                 ['email' => 'admin@example.com'],
                 [
