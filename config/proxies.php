@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\ProxiesDeConfianza;
+
 return [
 
     /*
@@ -8,27 +10,24 @@ return [
     |--------------------------------------------------------------------------
     |
     | Direcciones desde las que se acepta lo que digan las cabeceras
-    | «X-Forwarded-*». Importa más de lo que parece: esas cabeceras las escribe
-    | quien quiera, así que solo valen si el único que puede ponerlas es un
-    | intermediario propio.
+    | «X-Forwarded-For» y «X-Forwarded-Proto» (las únicas que se creen; ver
+    | App\Support\ProxiesDeConfianza). Esas cabeceras las escribe quien quiera,
+    | así que solo valen si el único que puede ponerlas es un intermediario
+    | propio.
     |
-    | Confiando en todos («*»), cualquiera declara la dirección de origen que se
-    | le antoje. Eso no rompe solo los registros: el conteo de intentos de
-    | acceso y cualquier límite por IP se evaden cambiando una cabecera.
+    | Por omisión NO se confía en nadie (falla cerrado). Antes se confiaba en
+    | los rangos privados y eso abría /admin: con el userland-proxy de Docker
+    | todo lo que entra por un puerto publicado llega desde la puerta de enlace
+    | del bridge (172.x.0.1), que también es privada, y bastaba mandar
+    | «X-Forwarded-For: <IP de la VPN>».
     |
-    | Por omisión se confía en los rangos privados, que es donde vive el
-    | intermediario en Docker y en el servidor: cubre el caso real —detectar
-    | HTTPS detrás del proxy— sin creerle a nadie de fuera. Si el intermediario
-    | está en otra parte, se acota con TRUSTED_PROXIES en el .env.
+    | En producción TRUSTED_PROXIES es OBLIGATORIO: la IP (o subred ≥ /16) del
+    | Caddy en la red de Docker, y Caddy tiene que SOBREESCRIBIR
+    | X-Forwarded-For, no añadirle. El arranque rechaza la lista vacía, «*»,
+    | 0.0.0.0/0, ::/0, REMOTE_ADDR y rangos anchos (CredencialesDePlantilla).
     |
     */
 
-    'confiables' => array_map(
-        trim(...),
-        explode(',', (string) env(
-            'TRUSTED_PROXIES',
-            '127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16'
-        ))
-    ),
+    'confiables' => ProxiesDeConfianza::desde((string) env('TRUSTED_PROXIES', '')),
 
 ];

@@ -191,6 +191,7 @@ it('el candado no tumba el build de la imagen', function () {
     config()->set('services.turnstile.sitekey', '0x4AAAAAAAreal');
     config()->set('services.turnstile.secret', '0x4AAAAAAAsecretoreal');
     config()->set('services.turnstile.hostname', 'recordatorios.example');
+    config()->set('proxies.confiables', ['172.31.251.1']);
 
     CredencialesDePlantilla::comprobar();
 

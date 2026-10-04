@@ -123,16 +123,16 @@ describe('erroresNoSalenDelPais', function () {
 });
 
 describe('proxiesDeConfianza', function () {
-    it('no se confía en cualquier proxy', function () {
+    it('no se confía en cualquier proxy (por omisión, en ninguno)', function () {
         $confiables = config('proxies.confiables');
 
-        expect($confiables)->toBeArray()->not->toBeEmpty()
+        expect($confiables)->toBeArray()
             ->and(array_intersect($confiables, ['*', '**', '0.0.0.0/0', '::/0']))->toBe([]);
     });
 
     it('la lista se aplica al arranque', function () {
         expect(leerDelRepo('app/Providers/AppServiceProvider.php'))
-            ->toContain("TrustProxies::at(config('proxies.confiables'))");
+            ->toContain("ProxiesDeConfianza::aplicar(config('proxies.confiables'))");
     });
 });
 

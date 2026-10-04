@@ -36,5 +36,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!-- El valor por omisión del código (ningún proxy de confianza) y no el
+             del .env de quien prueba: ver config/proxies.php. -->
+        <env name="TRUSTED_PROXIES" value="" force="true"/>
     </php>
 </phpunit>

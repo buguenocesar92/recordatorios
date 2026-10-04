@@ -21,7 +21,8 @@ use RuntimeException;
  *   `ip_hash` dejan de ser seudónimos;
  * - Turnstile sin claves o con las de prueba de Cloudflare, o sin hostname
  *   esperado (TURNSTILE_HOSTNAME): sin él se acepta un token resuelto en
- *   cualquier otro sitio con la misma clave.
+ *   cualquier otro sitio con la misma clave;
+ * - TRUSTED_PROXIES vacío, con comodín o con rangos anchos.
  *
  * Se llama como PRIMERA línea de AppServiceProvider::boot(). Sin clave de
  * aplicación no hay nada que proteger: es el arranque de `composer install`
@@ -99,6 +100,17 @@ final class CredencialesDePlantilla
             throw new RuntimeException(
                 'Falta TURNSTILE_HOSTNAME (el dominio público de la landing). Sin él, el servidor no comprueba '
                 .'en qué sitio se resolvió el desafío y acepta tokens de cualquier otro.'
+            );
+        }
+
+        /** @var list<string> $proxies */
+        $proxies = (array) config('proxies.confiables', []);
+
+        if ($proxies === [] || ! ProxiesDeConfianza::acotadas($proxies)) {
+            throw new RuntimeException(
+                'TRUSTED_PROXIES vacío o demasiado amplio. En producción va solo la IP (o una subred de /16 o más '
+                .'estrecha) del proxy propio: sin ella todos comparten la IP del proxy, y con un comodín o rango ancho '
+                .'cualquiera declara su origen (ver config/proxies.php).'
             );
         }
     }

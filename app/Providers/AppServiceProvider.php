@@ -12,6 +12,7 @@ use App\Models\WaitlistSignup;
 use App\Notifications\Auth\RestablecerContrasenaNotification;
 use App\Policies\ActivityPolicy;
 use App\Support\CredencialesDePlantilla;
+use App\Support\ProxiesDeConfianza;
 use App\Support\Sitio\Sitemap;
 use App\Support\VerificadorDeFiltraciones;
 use Filament\Auth\Notifications\ResetPassword as ResetPasswordDelPanel;
@@ -25,7 +26,6 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -199,11 +199,11 @@ class AppServiceProvider extends ServiceProvider
         // «X-Forwarded-*». Va acá y no en bootstrap/app.php porque allí la
         // configuración todavía no está cargada y config() lanza excepción.
         //
-        // Antes se confiaba en «*». Hace falta confiar en alguien —si no, detrás del
-        // intermediario no se detecta HTTPS ni se sabe de dónde viene nadie—, pero con
-        // «*» cualquiera declara la dirección que quiera: se evade lo que se cuente por
-        // IP y los registros dicen lo que diga el atacante.
-        TrustProxies::at(config('proxies.confiables'));
+        // Por omisión no se confía en nadie, y de quien sí solo se creen
+        // X-Forwarded-For y X-Forwarded-Proto: ver App\Support\ProxiesDeConfianza.
+        // Con «*» o con todos los rangos privados cualquiera declaraba la dirección
+        // que quisiera: se evadía lo que se cuenta por IP y el candado de la VPN.
+        ProxiesDeConfianza::aplicar(config('proxies.confiables'));
 
         // El segundo factor tiene que cubrir lo que el panel HACE, no solo lo que
         // muestra. Filament es una aplicación de Livewire: abrir una página es una

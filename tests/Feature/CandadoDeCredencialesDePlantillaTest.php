@@ -77,6 +77,7 @@ it('en producción, con todo en orden, arranca', function () {
     config()->set('services.turnstile.sitekey', '0x4AAAAAAAreal');
     config()->set('services.turnstile.secret', '0x4AAAAAAAsecretoreal');
     config()->set('services.turnstile.hostname', 'recordatorios.example');
+    config()->set('proxies.confiables', ['172.31.251.1']);
 
     CredencialesDePlantilla::comprobar();
 })->throwsNoExceptions();

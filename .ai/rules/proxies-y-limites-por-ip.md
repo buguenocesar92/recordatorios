@@ -23,8 +23,13 @@ cubeta, bloqueándose los usuarios entre sí.
 
 ## Dónde va, y por qué ahí
 
-`TrustProxies::at(config('proxies.confiables'))` en `AppServiceProvider::boot()`, con
-`config/proxies.php` (rangos privados por omisión, acotable con `TRUSTED_PROXIES`).
+`ProxiesDeConfianza::aplicar(config('proxies.confiables'))` en `AppServiceProvider::boot()`,
+con `config/proxies.php`: **ningún proxy por omisión** (falla cerrado) y `TRUSTED_PROXIES`
+obligatorio y acotado en producción (IP exacta o subred ≥ /16 / ≥ /64; el arranque rechaza
+vacío, `*`, `0.0.0.0/0`, `::/0`, `REMOTE_ADDR` y rangos anchos). Confiar en todos los rangos
+privados abría `/admin`: el bridge de Docker (172.x.0.1) es RFC1918. De un proxy de
+confianza solo se creen `X-Forwarded-For` y `X-Forwarded-Proto`; el host lo decide
+`APP_URL` (un `X-Forwarded-Host` reenviado envenenaba la caché pública del robots.txt).
 
 **No lo muevas a `bootstrap/app.php`**: allí la configuración todavía no está cargada y
 `config()` lanza excepción. Ese es el motivo de que el scaffold lo tenga en el provider
