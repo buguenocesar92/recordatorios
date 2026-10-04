@@ -192,6 +192,7 @@ it('el candado no tumba el build de la imagen', function () {
     config()->set('services.turnstile.secret', '0x4AAAAAAAsecretoreal');
     config()->set('services.turnstile.hostname', 'recordatorios.example');
     config()->set('proxies.confiables', ['172.31.251.1']);
+    config()->set('waitlist.purge_confirmed_after', '2027-06-30');
 
     CredencialesDePlantilla::comprobar();
 

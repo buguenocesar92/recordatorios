@@ -10,8 +10,13 @@
 | se niega (App\Support\CredencialesDePlantilla). Se genera con
 | `openssl rand -base64 32` y va en SOPS, nunca en el repositorio.
 |
-| `consent_version`: versión del texto de privacidad que la persona aceptó. Se
-| sube cada vez que cambie el aviso (hoy es un borrador pendiente de abogado).
+| La versión del aviso que acepta cada persona sale del texto del aviso
+| (App\Waitlist\VersionDelConsentimiento), no de una cadena a mano.
+|
+| `purge_confirmed_after` (WAITLIST_PURGE_AFTER, fecha AAAA-MM-DD): el aviso
+| promete conservar lo confirmado «hasta el lanzamiento más seis meses». Desde
+| esa fecha maintenance:daily borra las inscripciones confirmadas. Obligatoria
+| en producción (CredencialesDePlantilla).
 |
 */
 
@@ -44,6 +49,10 @@ return [
 
     'survey_link_ttl_minutes' => 120,
 
-    'consent_version' => '2026-10-01-borrador',
+    'purge_confirmed_after' => env('WAITLIST_PURGE_AFTER') ?: null,
+
+    // Cuánto se conserva el hash del token después de confirmar (para responder
+    // 410 «ya se usó» en vez de 404 mientras el enlace sigue en el correo).
+    'used_token_retention_hours' => 72,
 
 ];

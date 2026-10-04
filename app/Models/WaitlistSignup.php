@@ -29,7 +29,7 @@ use InvalidArgumentException;
  * @property list<string> $interests
  * @property string $consent_version
  * @property Carbon $consented_at
- * @property string $ip_hash
+ * @property string|null $ip_hash
  * @property string|null $confirm_token_hash
  * @property Carbon|null $confirm_expires_at
  * @property Carbon|null $confirmed_at
@@ -115,8 +115,11 @@ class WaitlistSignup extends Model
     {
         // El hash del token se conserva: es lo que permite responder 410
         // («este enlace ya se usó») en vez de 404 a quien vuelve a abrirlo.
-        // Un token ya usado no sirve para nada: confirmed_at manda.
-        $this->forceFill(['confirmed_at' => now()])->save();
+        // Un token ya usado no sirve para nada: confirmed_at manda. Pasadas
+        // 72 h el hash se borra (el enlace del correo ya venció de todos modos).
+        // El seudónimo de la IP solo servía contra abusos del alta: se borra.
+        // El hash del token se borra 72 h después (maintenance:daily).
+        $this->forceFill(['confirmed_at' => now(), 'ip_hash' => null])->save();
     }
 
     /** @return BelongsTo<Comuna, $this> */

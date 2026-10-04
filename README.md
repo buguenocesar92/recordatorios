@@ -177,6 +177,34 @@ y no se despliega nada (tarea 0.8 detenida).
 7. **Umbral de la validación** (spec Q1) y el guion de entrevistas de la tarea 0.9.
 8. Nombre comercial del producto (`APP_NAME`/`SITIO_NOMBRE`, hoy «Recordatorios»).
 9. Verificar a mano la fila de Antártica (12202) del catálogo de comunas.
+10. **Variables nuevas que faltan en `.env.example`** (este cambio no lo toca; agregarlas
+    a mano, la prueba `EnvExampleCompletoTest` queda en rojo hasta entonces):
+    - `WAITLIST_PURGE_AFTER=` — fecha `AAAA-MM-DD` = lanzamiento más seis meses. Desde ese
+      día `maintenance:daily` borra las inscripciones **confirmadas** (lo que promete el
+      aviso de privacidad). Obligatoria en producción: sin ella, o ilegible, no arranca.
+    - `TRUSTED_PROXIES=` ya existía, pero **su valor por omisión cambió a vacío** (ningún
+      proxy) y en producción es obligatorio y acotado (IP o subred ≥ /16; nunca `*` ni
+      rangos RFC1918 completos). Si `.env.example` todavía trae los rangos privados como
+      ejemplo, cambiarlos por la IP de Caddy en la red de Docker.
+
+## Derechos ARCOP de la lista de espera (Ley 21.719)
+
+- **Supresión inmediata, sin intermediarios**: el enlace «darme de baja» de cada correo
+  (y la cabecera `List-Unsubscribe` de un clic) borra la fila entera.
+- **Acceso, rectificación, supresión, oposición y portabilidad**: por correo al contacto
+  de privacidad que publica `/privacidad` (pendiente de completar por el responsable, ítem
+  5). Plazo: 30 días corridos, prorrogables una vez. Para verificar identidad se responde
+  **solo al mismo correo inscrito** (nunca se entrega información a otra dirección) y la
+  búsqueda se hace por `email_hash` (`WaitlistSignup::hashEmail()`), sin listar la
+  tabla: el panel no tiene pantalla de la lista (solo métricas agregadas), así que lo
+  atiende el dueño en el servidor. Cada solicitud y su respuesta se registran fuera de la base de la
+  lista (fecha, derecho ejercido, resultado), sin copiar el correo.
+- **Plazos automáticos**: sin confirmar → borrado a las 72 h; confirmada → la IP seudónima
+  se borra al confirmar, el hash del token a las 72 h y la fila entera desde
+  `WAITLIST_PURGE_AFTER`. Los respaldos cifrados pueden conservar un dato borrado hasta
+  que expiran (lo dice el aviso y la página de baja).
+- La versión del aviso que aceptó cada persona (`consent_version`) es el hash del texto de
+  `resources/views/sitio/legal/privacidad.blade.php`: cambiar el texto cambia la versión.
 
 ## Runbook de la tarea 0.8: prerrequisitos, riesgos aceptados y reglas para la V1
 

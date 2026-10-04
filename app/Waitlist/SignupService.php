@@ -81,7 +81,7 @@ final class SignupService
         $signup->fill([
             'comuna_id' => $comunaCode !== null ? Comuna::query()->where('code', $comunaCode)->value('id') : null,
             'interests' => array_values(array_unique($interests)),
-            'consent_version' => (string) config('waitlist.consent_version'),
+            'consent_version' => VersionDelConsentimiento::actual(),
             'consented_at' => now(),
             'ip_hash' => WaitlistSignup::hashIp($ip),
             'confirm_expires_at' => now()->addHours((int) config('waitlist.confirm_ttl_hours', 72)),

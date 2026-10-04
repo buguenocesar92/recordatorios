@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\ObligationTypeCode;
 use App\Models\WaitlistSignup;
+use App\Waitlist\VersionDelConsentimiento;
 use Database\Seeders\ComunasSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -106,7 +107,7 @@ it('guarda comuna, intereses, versión del consentimiento y la IP solo como hash
 
     expect($signup->comuna->code)->toBe('06106')
         ->and($signup->interests)->toBe(['soap', 'contribuciones'])
-        ->and($signup->consent_version)->toBe(config('waitlist.consent_version'))
+        ->and($signup->consent_version)->toBe(VersionDelConsentimiento::actual())
         ->and($signup->confirmed_at)->toBeNull()
         ->and($signup->ip_hash)->toHaveLength(64)
         ->and($signup->ip_hash)->not->toContain('127.0.0.1');

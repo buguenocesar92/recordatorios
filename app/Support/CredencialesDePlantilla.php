@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Waitlist\FechaDePurgaDeLaLista;
 use RuntimeException;
 
 /**
@@ -22,7 +23,8 @@ use RuntimeException;
  * - Turnstile sin claves o con las de prueba de Cloudflare, o sin hostname
  *   esperado (TURNSTILE_HOSTNAME): sin él se acepta un token resuelto en
  *   cualquier otro sitio con la misma clave;
- * - TRUSTED_PROXIES vacío, con comodín o con rangos anchos.
+ * - TRUSTED_PROXIES vacío, con comodín o con rangos anchos;
+ * - sin WAITLIST_PURGE_AFTER (la fecha en que se borra lo confirmado).
  *
  * Se llama como PRIMERA línea de AppServiceProvider::boot(). Sin clave de
  * aplicación no hay nada que proteger: es el arranque de `composer install`
@@ -111,6 +113,13 @@ final class CredencialesDePlantilla
                 'TRUSTED_PROXIES vacío o demasiado amplio. En producción va solo la IP (o una subred de /16 o más '
                 .'estrecha) del proxy propio: sin ella todos comparten la IP del proxy, y con un comodín o rango ancho '
                 .'cualquiera declara su origen (ver config/proxies.php).'
+            );
+        }
+
+        if (FechaDePurgaDeLaLista::desdeConfiguracion() === null) {
+            throw new RuntimeException(
+                'Falta WAITLIST_PURGE_AFTER (fecha AAAA-MM-DD: lanzamiento más seis meses). El aviso de privacidad '
+                .'promete borrar lo confirmado en ese plazo y sin fecha se conservaría para siempre.'
             );
         }
     }
