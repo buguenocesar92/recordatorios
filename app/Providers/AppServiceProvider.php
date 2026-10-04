@@ -306,9 +306,17 @@ class AppServiceProvider extends ServiceProvider
      */
     private function limitesDeLaListaDeEspera(): void
     {
-        RateLimiter::for('waitlist-ip', fn (Request $request): Limit => Limit::perMinute((int) config('waitlist.ip_attempts_per_minute', 5))
-            ->by('waitlist-ip:'.WaitlistSignup::hashIp($request->ip()))
-            ->response(fn (Request $request, array $cabeceras) => response(view('lista.demasiados')->render(), 429, $cabeceras)));
+        $demasiados = fn (Request $request, array $cabeceras) => response(view('lista.demasiados')->render(), 429, $cabeceras);
+
+        RateLimiter::for('waitlist-ip', fn (Request $request): array => [
+            Limit::perMinute((int) config('waitlist.ip_attempts_per_minute', 5))
+                ->by('waitlist-ip:'.WaitlistSignup::hashIp($request->ip()))
+                ->response($demasiados),
+            // Global: el por-IP no frena a quien rota direcciones.
+            Limit::perMinute((int) config('waitlist.global_attempts_per_minute', 60))
+                ->by('waitlist-global')
+                ->response($demasiados),
+        ]);
 
         RateLimiter::for('waitlist-token', fn (Request $request): Limit => Limit::perMinute(30)
             ->by('waitlist-token:'.WaitlistSignup::hashIp($request->ip())));

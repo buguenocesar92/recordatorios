@@ -28,6 +28,15 @@ return [
 
     'ip_attempts_per_minute' => 5,
 
+    // Tope GLOBAL del formulario (todas las IPs juntas): el por-IP no frena a
+    // quien rota direcciones, y cada alta que pasa cuesta una llamada a
+    // Turnstile y un correo.
+    'global_attempts_per_minute' => 60,
+
+    // Comprobar en el trabajo de envío que el dominio recibe correo (MX, o A
+    // como respaldo). Fuera de la petición: la consulta DNS no tiene tope.
+    'verify_mx' => env('APP_ENV') === 'production',
+
     'survey_link_ttl_minutes' => 120,
 
     'consent_version' => '2026-10-01-borrador',

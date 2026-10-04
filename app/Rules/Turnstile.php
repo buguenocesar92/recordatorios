@@ -15,7 +15,7 @@ use Throwable;
  * Verifica el token de Cloudflare Turnstile del lado del servidor (siteverify).
  *
  * Falla CERRADO: sin token, con token de más de 2048 caracteres, con Cloudflare
- * caído o lento (timeout de 5 s), con una respuesta ilegible o con
+ * caído o lento (2 s para conectar, 5 s en total), con una respuesta ilegible o con
  * `success: false`, la inscripción no pasa. La URL y la clave secreta salen de
  * config/services.php, nunca del request (no hay SSRF posible). A los registros
  * va solo el código de error de Cloudflare, nunca el token ni la IP.
@@ -51,6 +51,7 @@ final class Turnstile implements ValidationRule
 
         try {
             $respuesta = Http::asForm()
+                ->connectTimeout((int) config('services.turnstile.connect_timeout', 2))
                 ->timeout((int) config('services.turnstile.timeout', 5))
                 ->post((string) config('services.turnstile.url'), array_filter([
                     'secret' => (string) config('services.turnstile.secret'),

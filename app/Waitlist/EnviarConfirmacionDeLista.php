@@ -29,6 +29,9 @@ use Throwable;
  * traza puede traer argumentos: se descarta y se relanza uno genérico, para que
  * `failed_jobs.exception` tampoco guarde el correo.
  *
+ * Si el dominio no tiene MX ni A (comprobado acá y no en la petición, que no
+ * debe esperar al DNS), la inscripción se borra sin mandar nada.
+ *
  * Si la persona se dio de baja antes de que corra el trabajo, la inscripción ya
  * no existe y el trabajo se descarta solo (`deleteWhenMissingModels`).
  */
@@ -53,6 +56,15 @@ final class EnviarConfirmacionDeLista implements ShouldQueue
         $signup = $this->signup;
 
         if ($signup->confirmed_at !== null || $signup->unsubscribed_at !== null) {
+            return;
+        }
+
+        // Un dominio que no recibe correo: no hay a quién escribirle ni nada
+        // que conservar. Se borra en silencio (la respuesta al formulario ya
+        // fue la genérica).
+        if (config('waitlist.verify_mx') === true && ! app(DominioConCorreo::class)->acepta((string) $signup->email)) {
+            $signup->delete();
+
             return;
         }
 

@@ -37,25 +37,37 @@ final class WaitlistController
 
     public function store(Request $request, SignupService $servicio): Response
     {
-        $validador = Validator::make($request->all(), [
-            'email' => ['required', 'string', 'max:320', app()->environment('production') ? 'email:rfc,dns' : 'email:rfc'],
-            'consent' => ['accepted'],
-            'comuna' => ['nullable', 'string', Rule::exists('comunas', 'code')],
-            'interests' => ['nullable', 'array', 'max:5'],
-            'interests.*' => ['string', Rule::in(ObligationTypeCode::values())],
-            // `required` Y regla implícita: una regla propia no implícita se SALTA
-            // cuando el campo no viene, y omitirlo esquivaría Turnstile.
-            'cf-turnstile-response' => ['bail', 'required', new Turnstile($request->ip())],
-        ], [
+        $mensajes = [
             'email.required' => 'Escribe tu correo.',
             'email.email' => 'Ese correo no parece válido. Revisa que tenga la forma nombre@dominio.cl.',
             'email.max' => 'El correo es demasiado largo.',
             'cf-turnstile-response.required' => Turnstile::MENSAJE,
+            'cf-turnstile-response.string' => Turnstile::MENSAJE,
+            'cf-turnstile-response.max' => Turnstile::MENSAJE,
             'consent.accepted' => 'Para inscribirte tienes que aceptar el aviso de privacidad.',
             'comuna.exists' => 'Elige una comuna de la lista.',
             'interests.*.in' => 'Elige solo obligaciones de la lista.',
             'interests.max' => 'Elige solo obligaciones de la lista.',
-        ]);
+        ];
+
+        // Primero lo barato y local. Sin `dns`: la consulta DNS era síncrona,
+        // sin tope y corría en cada envío aunque el captcha fuera inválido. El
+        // dominio se comprueba en el trabajo de envío (DominioConCorreo).
+        $locales = Validator::make($request->all(), [
+            'email' => ['required', 'string', 'max:320', 'email:rfc'],
+            'consent' => ['accepted'],
+            'comuna' => ['nullable', 'string', Rule::exists('comunas', 'code')],
+            'interests' => ['nullable', 'array', 'max:5'],
+            'interests.*' => ['string', Rule::in(ObligationTypeCode::values())],
+            'cf-turnstile-response' => ['required', 'string', 'max:2048'],
+        ], $mensajes);
+
+        // Después, y solo si lo anterior pasó, Turnstile (una llamada de red con
+        // tope). `required` Y regla implícita: una regla propia no implícita se
+        // SALTA cuando el campo no viene, y omitirlo esquivaría Turnstile.
+        $validador = $locales->fails() ? $locales : Validator::make($request->all(), [
+            'cf-turnstile-response' => ['bail', 'required', new Turnstile($request->ip())],
+        ], $mensajes);
 
         if ($validador->fails()) {
             $errores = $validador->errors();
@@ -76,7 +88,7 @@ final class WaitlistController
         }
 
         /** @var array{email: string, comuna?: string|null, interests?: list<string>|null} $datos */
-        $datos = $validador->validated();
+        $datos = $locales->validated();
 
         $servicio->register(
             (string) $datos['email'],

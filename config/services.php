@@ -28,6 +28,7 @@ return [
         'secret' => env('TURNSTILE_SECRET') ?: (in_array(env('APP_ENV'), ['local', 'testing'], true) ? '1x0000000000000000000000000000000AA' : ''),
         'hostname' => env('TURNSTILE_HOSTNAME', ''),
         'url' => 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        'connect_timeout' => 2,
         'timeout' => 5,
     ],
 
