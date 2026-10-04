@@ -42,6 +42,8 @@ it('HSTS solo se promete por HTTPS', function () {
 
 it('un dominio declarado como indexable no lleva X-Robots-Tag', function () {
     config()->set('sitio.dominios_indexables', ['ejemplo.cl']);
+    // El dominio canónico es el de APP_URL (App\Support\Indexacion).
+    config()->set('app.url', 'http://ejemplo.cl');
 
     expect($this->get('http://ejemplo.cl/')->headers->has('X-Robots-Tag'))->toBeFalse()
         ->and($this->get('http://otro.test/')->headers->get('X-Robots-Tag'))->toBe('noindex, nofollow');
