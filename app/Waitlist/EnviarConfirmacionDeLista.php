@@ -21,7 +21,8 @@ use Throwable;
  * Lo que viaja por la cola (Redis mientras espera, `failed_jobs` si falla, y de
  * ahí a los respaldos de la base) es solo el id de la inscripción: nunca el
  * correo descifrado ni el token. El correo se lee de la base y el token se
- * GENERA aquí, en el momento de enviar; en la base queda únicamente su sha256
+ * GENERA aquí, en el momento de enviar (el mismo en cada reintento del
+ * trabajo, ver token()); en la base queda únicamente su sha256
  * y su vencimiento (72 h desde el envío). Un token se usa una sola vez
  * (`confirmed_at`), igual que antes.
  *
@@ -68,7 +69,7 @@ final class EnviarConfirmacionDeLista implements ShouldQueue
             return;
         }
 
-        $token = ConfirmationToken::generate();
+        $token = $this->token();
 
         $signup->forceFill([
             'confirm_token_hash' => ConfirmationToken::hash($token),
@@ -80,5 +81,27 @@ final class EnviarConfirmacionDeLista implements ShouldQueue
         } catch (Throwable $e) {
             throw new RuntimeException('No se pudo enviar el correo de confirmación ('.$e::class.').');
         }
+    }
+
+    /**
+     * El mismo token en todos los reintentos de ESTE trabajo: si el primer
+     * intento llegó a entregar el correo y falló después (el transporte cortó
+     * tras aceptar), regenerarlo dejaba muerto el enlace que la persona ya
+     * tiene. Se deriva del uuid del trabajo (igual en cada reintento, distinto
+     * en cada envío) con una clave sacada de APP_KEY, así que nunca viaja ni
+     * se guarda en claro. Sin trabajo de cola (llamada directa), uno al azar.
+     */
+    private function token(): string
+    {
+        $uuid = $this->job?->uuid();
+
+        if (! is_string($uuid) || $uuid === '') {
+            return ConfirmationToken::generate();
+        }
+
+        $clave = hash('sha256', 'waitlist-confirmacion|'.(string) config('app.key'), true);
+        $crudo = hash_hmac('sha256', $uuid.'|'.$this->signup->id, $clave, true);
+
+        return rtrim(strtr(base64_encode($crudo), '+/', '-_'), '=');
     }
 }

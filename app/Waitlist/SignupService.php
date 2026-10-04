@@ -6,9 +6,13 @@ namespace App\Waitlist;
 
 use App\Models\Comuna;
 use App\Models\WaitlistSignup;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Throwable;
 
 /**
  * Alta en la lista de espera con doble opt-in (spec §4, plan 0.4–0.5).
@@ -26,7 +30,8 @@ use Illuminate\Support\Facades\RateLimiter;
  *
  * Altas simultáneas del mismo correo: un candado por `email_hash` serializa la
  * sección crítica (consulta, límite de 24 h, escritura, encolado). Quien no
- * obtiene el candado sale en silencio —la otra petición manda el correo—, y si
+ * obtiene el candado espera hasta 2 s y, si sigue tomado, sale con la misma
+ * respuesta genérica —la otra petición manda el correo—, y si
  * aun así el índice único del hash salta (candado vencido, caché caída), se
  * trata igual: sale en silencio. Desde afuera, siempre la misma respuesta.
  */
@@ -40,21 +45,53 @@ final class SignupService
         $hash = WaitlistSignup::hashEmail($email);
         $candado = Cache::lock('waitlist-signup:'.$hash, 15);
 
-        if (! $candado->get()) {
+        // Se espera un momento al candado (la otra petición suele tardar
+        // milisegundos) en vez de soltar el alta en silencio; si no se libera,
+        // respuesta genérica igual.
+        try {
+            $candado->block((int) config('waitlist.lock_wait_seconds', 2));
+        } catch (LockTimeoutException) {
             return;
         }
 
         try {
             $signup = $this->guardar($hash, $email, $comunaCode, $interests, $ip);
+
+            if ($signup !== null) {
+                $this->encolarYEnfriar($signup, $email);
+            }
         } catch (UniqueConstraintViolationException) {
             return;
         } finally {
             $candado->release();
         }
+    }
 
-        if ($signup !== null) {
-            EnviarConfirmacionDeLista::dispatch($signup);
+    /**
+     * El enfriamiento de 24 h por buzón se aplica SOLO si el trabajo quedó en
+     * la cola: con la cola caída la persona no recibió nada y tiene que poder
+     * reintentar. Va dentro del candado, para que dos altas simultáneas no
+     * pasen las dos la comprobación antes de que una aplique el enfriamiento.
+     */
+    private function encolarYEnfriar(WaitlistSignup $signup, string $email): void
+    {
+        try {
+            app(Dispatcher::class)->dispatch(new EnviarConfirmacionDeLista($signup));
+        } catch (Throwable $e) {
+            // Solo la clase: el mensaje de un driver de cola puede traer datos.
+            Log::error('lista de espera: no se pudo encolar la confirmación ('.$e::class.')');
+
+            return;
         }
+
+        RateLimiter::hit(self::claveDeEnfriamiento($email), (int) config('waitlist.resend_cooldown_hours', 24) * 3600);
+    }
+
+    private static function claveDeEnfriamiento(string $email): string
+    {
+        // Por BUZÓN (sin +etiqueta, Gmail sin puntos): si no, ana+1@, ana+2@…
+        // mandaban un correo cada una al mismo buzón.
+        return 'waitlist-email:'.WaitlistSignup::hashEmail(ClavesDeLimite::buzon($email));
     }
 
     /**
@@ -68,12 +105,7 @@ final class SignupService
             return null;
         }
 
-        // El enfriamiento cuenta por BUZÓN (sin +etiqueta, Gmail sin puntos):
-        // si no, ana+1@, ana+2@… mandaban un correo cada una al mismo buzón.
-        $clave = 'waitlist-email:'.WaitlistSignup::hashEmail(ClavesDeLimite::buzon($email));
-        $horas = (int) config('waitlist.resend_cooldown_hours', 24);
-
-        if (RateLimiter::tooManyAttempts($clave, 1)) {
+        if (RateLimiter::tooManyAttempts(self::claveDeEnfriamiento($email), 1)) {
             return null;
         }
 
@@ -106,8 +138,6 @@ final class SignupService
         }
 
         $signup->forceFill(['confirm_expires_at' => $signup->vencimientoDeConfirmacion()])->save();
-
-        RateLimiter::hit($clave, $horas * 3600);
 
         return $signup;
     }

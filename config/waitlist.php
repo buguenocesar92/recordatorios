@@ -32,6 +32,10 @@ return [
 
     'resend_cooldown_hours' => 24,
 
+    // Cuánto espera un alta al candado de su correo si otra petición del mismo
+    // correo va a medio camino (después: respuesta genérica sin enviar).
+    'lock_wait_seconds' => 2,
+
     // Cuánto se conserva en failed_jobs un envío de confirmación fallido.
     'failed_job_retention_hours' => 24,
 
