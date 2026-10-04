@@ -167,3 +167,30 @@ describe('normalización de las claves (sin atajos para esquivar los límites)',
             ->and(ClaveDeOrigen::de('[::ffff:198.51.100.7]'))->toBe('198.51.100.7');
     });
 });
+
+describe('proveedores de correo masivos fuera del límite por dominio', function () {
+    it('25 direcciones de gmail desde 25 IPs en un minuto: ninguna la frena el límite por dominio', function () {
+        foreach (range(1, 25) as $n) {
+            altaDesde("198.51.100.{$n}", "persona{$n}@gmail.com")->assertOk();
+        }
+    });
+
+    it('21 direcciones de un dominio propio desde 21 IPs: la 21 recibe 429', function () {
+        foreach (range(1, 20) as $n) {
+            altaDesde("198.51.100.{$n}", "persona{$n}@empresa-rociada.example")->assertOk();
+        }
+
+        altaDesde('198.51.100.21', 'persona21@empresa-rociada.example')->assertStatus(429);
+    });
+
+    it('la lista de proveedores exentos es configurable e incluye los masivos', function () {
+        expect(config('waitlist.domain_limit_exempt'))
+            ->toContain('gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com');
+
+        config()->set('waitlist.domain_limit_exempt', []);
+        config()->set('waitlist.domain_attempts_per_minute', 1);
+
+        altaDesde('198.51.100.1', 'a@gmail.com')->assertOk();
+        altaDesde('198.51.100.2', 'b@gmail.com')->assertStatus(429);
+    });
+});

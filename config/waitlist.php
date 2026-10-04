@@ -45,6 +45,16 @@ return [
     // Por dominio del correo (miles de direcciones contra una misma organización).
     'domain_attempts_per_minute' => 20,
 
+    // Proveedores masivos EXENTOS del límite por dominio: con él, cualquiera
+    // agotaba los 20/min de gmail.com y dejaba fuera a todos sus usuarios.
+    // Siguen cubiertos por el límite por IP (/64), por buzón y el techo global.
+    // El límite por dominio es para dominios propios usados para rociar.
+    'domain_limit_exempt' => [
+        'gmail.com', 'googlemail.com', 'hotmail.com', 'hotmail.es', 'outlook.com', 'outlook.es',
+        'live.com', 'live.cl', 'msn.com', 'yahoo.com', 'yahoo.es', 'ymail.com', 'icloud.com',
+        'me.com', 'mac.com', 'aol.com', 'proton.me', 'protonmail.com', 'gmx.com', 'zoho.com',
+    ],
+
     // Techo GLOBAL de seguridad (todas las IPs juntas), alto a propósito: solo
     // lo gastan las altas que ya pasaron los límites por IP y por dominio, así
     // que un solo origen no lo agota. Frena a quien rota miles de direcciones;

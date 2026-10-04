@@ -314,14 +314,16 @@ class AppServiceProvider extends ServiceProvider
     {
         $demasiados = fn (Request $request, array $cabeceras) => response(view('lista.demasiados')->render(), 429, $cabeceras);
 
-        RateLimiter::for('waitlist-ip', fn (Request $request): array => [
+        RateLimiter::for('waitlist-ip', fn (Request $request): array => array_values(array_filter([
             // Por IP (IPv6 agrupada por /64: ver ClaveDeOrigen).
             Limit::perMinute((int) config('waitlist.ip_attempts_per_minute', 5))
                 ->by('waitlist-ip:'.WaitlistSignup::hashIp(ClaveDeOrigen::de($request->ip())))
                 ->response($demasiados),
             // Por dominio del correo: el límite por correo no frena miles de
-            // direcciones distintas contra una misma organización.
-            Limit::perMinute((int) config('waitlist.domain_attempts_per_minute', 20))
+            // direcciones distintas contra una misma organización. Los
+            // proveedores masivos quedan fuera (waitlist.domain_limit_exempt):
+            // si no, agotarlo para gmail.com bloqueaba a todos sus usuarios.
+            self::dominioExento($request->input('email')) ? null : Limit::perMinute((int) config('waitlist.domain_attempts_per_minute', 20))
                 ->by('waitlist-dominio:'.hash('sha256', ClavesDeLimite::dominio($request->input('email'))))
                 ->response($demasiados),
             // Techo global de seguridad, ALTO y último: Laravel revisa los
@@ -340,9 +342,17 @@ class AppServiceProvider extends ServiceProvider
                         'mensaje' => 'Hay muchas inscripciones en este momento. Intenta de nuevo en unos minutos.',
                     ])->render(), 429, $cabeceras);
                 }),
-        ]);
+        ])));
 
         RateLimiter::for('waitlist-token', fn (Request $request): Limit => Limit::perMinute(30)
             ->by('waitlist-token:'.WaitlistSignup::hashIp(ClaveDeOrigen::de($request->ip()))));
+    }
+
+    private static function dominioExento(mixed $email): bool
+    {
+        /** @var list<string> $exentos */
+        $exentos = (array) config('waitlist.domain_limit_exempt', []);
+
+        return in_array(ClavesDeLimite::dominio($email), $exentos, true);
     }
 }
