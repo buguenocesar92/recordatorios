@@ -128,3 +128,13 @@ it('la comprobación de MX va encendida solo en producción por omisión', funct
     expect(config('waitlist.verify_mx'))->toBeFalse()
         ->and((string) file_get_contents(config_path('waitlist.php')))->toContain("'verify_mx' => env('APP_ENV') === 'production'");
 });
+
+it('el 422 que vuelve a dibujar la portada conserva la CSP de Turnstile (si no, el widget no carga)', function () {
+    Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true])]);
+
+    $csp = (string) altaBarata(['email' => 'no-es-un-correo'])->assertStatus(422)->headers->get('Content-Security-Policy');
+
+    expect($csp)->toContain('script-src')
+        ->and($csp)->toMatch('/script-src[^;]*https:\/\/challenges\.cloudflare\.com/')
+        ->and($csp)->toMatch('/frame-src[^;]*https:\/\/challenges\.cloudflare\.com/');
+});

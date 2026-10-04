@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Landing\WaitlistController;
 use App\Http\Middleware\VerificarOrigenDelFormulario;
+use App\Support\Csp\PoliticaDeLaListaDeEspera;
 use Illuminate\Support\Facades\Route;
+use Spatie\Csp\AddCspHeaders;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,8 +21,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// La política de la portada (con Turnstile): el 422 vuelve a dibujar la
+// portada con su widget, y con la política del sitio el widget no cargaba.
 Route::post('/lista-de-espera', [WaitlistController::class, 'store'])
-    ->middleware([VerificarOrigenDelFormulario::class, 'throttle:waitlist-ip'])
+    ->middleware([VerificarOrigenDelFormulario::class, 'throttle:waitlist-ip', AddCspHeaders::class.':'.PoliticaDeLaListaDeEspera::class])
     ->name('lista.store');
 
 Route::get('/lista-de-espera/confirmar/{token}', [WaitlistController::class, 'confirmShow'])
