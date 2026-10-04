@@ -28,8 +28,10 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
@@ -319,10 +321,22 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute((int) config('waitlist.domain_attempts_per_minute', 20))
                 ->by('waitlist-dominio:'.hash('sha256', self::dominioDelCorreo($request->input('email'))))
                 ->response($demasiados),
-            // Global: el por-IP no frena a quien rota direcciones.
-            Limit::perMinute((int) config('waitlist.global_attempts_per_minute', 60))
+            // Techo global de seguridad, ALTO y último: Laravel revisa los
+            // límites en orden y una petición frenada por IP o dominio no gasta
+            // este cupo, así que un solo origen no lo agota. Sirve contra quien
+            // rota miles de direcciones; al tocarlo se avisa al log (una vez por
+            // minuto) y se responde «intenta en unos minutos».
+            Limit::perMinute((int) config('waitlist.global_attempts_per_minute', 300))
                 ->by('waitlist-global')
-                ->response($demasiados),
+                ->response(function (Request $request, array $cabeceras) {
+                    if (Cache::add('waitlist-global:avisado', true, 60)) {
+                        Log::warning('lista de espera: se alcanzó el techo global de altas por minuto (posible abuso distribuido)');
+                    }
+
+                    return response(view('lista.demasiados', [
+                        'mensaje' => 'Hay muchas inscripciones en este momento. Intenta de nuevo en unos minutos.',
+                    ])->render(), 429, $cabeceras);
+                }),
         ]);
 
         RateLimiter::for('waitlist-token', fn (Request $request): Limit => Limit::perMinute(30)
@@ -331,10 +345,18 @@ class AppServiceProvider extends ServiceProvider
 
     private static function dominioDelCorreo(mixed $email): string
     {
-        if (! is_string($email) || ! str_contains($email, '@')) {
+        if (! is_string($email)) {
             return '';
         }
 
-        return mb_strtolower(trim(substr((string) strrchr($email, '@'), 1)));
+        // Recortado ANTES de procesar: el campo lo escribe el cliente y puede
+        // pesar megas. La clave final igual se hashea (largo fijo).
+        $email = substr($email, 0, 320);
+
+        if (! str_contains($email, '@')) {
+            return '';
+        }
+
+        return strtolower(trim(substr((string) strrchr($email, '@'), 1)));
     }
 }

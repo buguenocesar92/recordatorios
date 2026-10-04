@@ -32,10 +32,11 @@ return [
     // Por dominio del correo (miles de direcciones contra una misma organización).
     'domain_attempts_per_minute' => 20,
 
-    // Tope GLOBAL del formulario (todas las IPs juntas): el por-IP no frena a
-    // quien rota direcciones, y cada alta que pasa cuesta una llamada a
-    // Turnstile y un correo.
-    'global_attempts_per_minute' => 60,
+    // Techo GLOBAL de seguridad (todas las IPs juntas), alto a propósito: solo
+    // lo gastan las altas que ya pasaron los límites por IP y por dominio, así
+    // que un solo origen no lo agota. Frena a quien rota miles de direcciones;
+    // al tocarlo se avisa al log.
+    'global_attempts_per_minute' => 300,
 
     // Comprobar en el trabajo de envío que el dominio recibe correo (MX, o A
     // como respaldo). Fuera de la petición: la consulta DNS no tiene tope.
