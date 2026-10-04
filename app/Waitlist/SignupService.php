@@ -68,7 +68,9 @@ final class SignupService
             return null;
         }
 
-        $clave = 'waitlist-email:'.$hash;
+        // El enfriamiento cuenta por BUZÓN (sin +etiqueta, Gmail sin puntos):
+        // si no, ana+1@, ana+2@… mandaban un correo cada una al mismo buzón.
+        $clave = 'waitlist-email:'.WaitlistSignup::hashEmail(ClavesDeLimite::buzon($email));
         $horas = (int) config('waitlist.resend_cooldown_hours', 24);
 
         if (RateLimiter::tooManyAttempts($clave, 1)) {

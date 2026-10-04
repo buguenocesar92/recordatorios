@@ -28,7 +28,11 @@ final class ClaveDeOrigen
 {
     public static function de(?string $ip): string
     {
+        // Corchetes ([2001:db8::1]) y zona (fe80::1%eth0) fuera: no cambian de
+        // quién es la dirección, y sin quitarlos la IP no se reconocía.
         $ip = trim((string) $ip);
+        $ip = trim($ip, '[]');
+        $ip = explode('%', $ip, 2)[0];
 
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
             return $ip;

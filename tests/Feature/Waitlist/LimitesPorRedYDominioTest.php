@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Waitlist\ClaveDeOrigen;
+use App\Waitlist\ClavesDeLimite;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -114,8 +115,55 @@ it('al tocar el techo global responde la página amable y deja un aviso en el lo
 });
 
 it('la clave por dominio no crece con lo que mande el cliente: se recorta y se hashea', function () {
-    $codigo = (string) file_get_contents(app_path('Providers/AppServiceProvider.php'));
+    expect((string) file_get_contents(app_path('Providers/AppServiceProvider.php')))->toContain("'waitlist-dominio:'.hash('sha256'")
+        ->and(ClavesDeLimite::dominio(str_repeat('a', 5_000_000).'@victima.example'))->toBe('');
+});
 
-    expect($codigo)->toContain("'waitlist-dominio:'.hash('sha256'")
-        ->and($codigo)->toContain('substr($email, 0, 320)');
+describe('normalización de las claves (sin atajos para esquivar los límites)', function () {
+    it('el dominio se normaliza: mayúsculas, punto final, subdominios e IDN cuentan como el mismo', function () {
+        $base = ClavesDeLimite::dominio('x@victima.example');
+
+        expect(ClavesDeLimite::dominio('x@Victima.EXAMPLE.'))->toBe($base)
+            ->and(ClavesDeLimite::dominio('x@sub.victima.example'))->toBe($base)
+            ->and(ClavesDeLimite::dominio('x@a.b.c.victima.example'))->toBe($base)
+            ->and(ClavesDeLimite::dominio('x@ñandú.cl'))->toBe(ClavesDeLimite::dominio('x@'.idn_to_ascii('ñandú.cl', IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46)))
+            ->and(ClavesDeLimite::dominio('x@ÑANDÚ.cl'))->toBe(ClavesDeLimite::dominio('x@ñandú.cl'));
+    });
+
+    it('respeta los sufijos de segundo nivel comunes (no junta a todo .co.uk ni .gob.cl)', function () {
+        expect(ClavesDeLimite::dominio('x@mail.victima.co.uk'))->toBe('victima.co.uk')
+            ->and(ClavesDeLimite::dominio('x@victima.gob.cl'))->toBe('victima.gob.cl')
+            ->and(ClavesDeLimite::dominio('x@empresa.cl'))->not->toBe(ClavesDeLimite::dominio('x@otra.cl'));
+    });
+
+    it('el buzón se canoniza: mayúsculas y +etiqueta en todos, puntos y googlemail en Gmail', function () {
+        expect(ClavesDeLimite::buzon('Ana+promo@Example.com'))->toBe(ClavesDeLimite::buzon('ana@example.com'))
+            ->and(ClavesDeLimite::buzon('a.n.a+x@gmail.com'))->toBe(ClavesDeLimite::buzon('ana@googlemail.com'))
+            ->and(ClavesDeLimite::buzon('a.na@otro.example'))->not->toBe(ClavesDeLimite::buzon('ana@otro.example'));
+    });
+
+    it('variantes +etiqueta del mismo buzón no reciben un segundo correo dentro de las 24 h', function () {
+        altaDesde('198.51.100.1', 'ana+1@example.com')->assertOk();
+        altaDesde('198.51.100.2', 'ana+2@example.com')->assertOk();
+        altaDesde('198.51.100.3', 'A.N.A@gmail.com')->assertOk();
+        altaDesde('198.51.100.4', 'ana+z@googlemail.com')->assertOk();
+
+        Mail::assertSentCount(2);
+    });
+
+    it('rotar subdominios no esquiva el límite por dominio', function () {
+        config()->set('waitlist.domain_attempts_per_minute', 2);
+
+        altaDesde('198.51.100.1', 'uno@a.victima.example')->assertOk();
+        altaDesde('198.51.100.2', 'dos@b.victima.example')->assertOk();
+        altaDesde('198.51.100.3', 'tres@C.Victima.Example')->assertStatus(429);
+    });
+
+    it('IPv6 entre corchetes o con zona se agrupa igual por /64', function () {
+        $base = ClaveDeOrigen::de('2001:db8:1:2::1');
+
+        expect(ClaveDeOrigen::de('[2001:db8:1:2::7]'))->toBe($base)
+            ->and(ClaveDeOrigen::de('2001:db8:1:2::9%eth0'))->toBe($base)
+            ->and(ClaveDeOrigen::de('[::ffff:198.51.100.7]'))->toBe('198.51.100.7');
+    });
 });

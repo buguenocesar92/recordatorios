@@ -16,6 +16,7 @@ use App\Support\ProxiesDeConfianza;
 use App\Support\Sitio\Sitemap;
 use App\Support\VerificadorDeFiltraciones;
 use App\Waitlist\ClaveDeOrigen;
+use App\Waitlist\ClavesDeLimite;
 use Filament\Auth\Notifications\ResetPassword as ResetPasswordDelPanel;
 use Filament\Forms\Components\FileUpload;
 use Filament\Support\Facades\FilamentView;
@@ -319,7 +320,7 @@ class AppServiceProvider extends ServiceProvider
             // Por dominio del correo: el límite por correo no frena miles de
             // direcciones distintas contra una misma organización.
             Limit::perMinute((int) config('waitlist.domain_attempts_per_minute', 20))
-                ->by('waitlist-dominio:'.hash('sha256', self::dominioDelCorreo($request->input('email'))))
+                ->by('waitlist-dominio:'.hash('sha256', ClavesDeLimite::dominio($request->input('email'))))
                 ->response($demasiados),
             // Techo global de seguridad, ALTO y último: Laravel revisa los
             // límites en orden y una petición frenada por IP o dominio no gasta
@@ -341,22 +342,5 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('waitlist-token', fn (Request $request): Limit => Limit::perMinute(30)
             ->by('waitlist-token:'.WaitlistSignup::hashIp(ClaveDeOrigen::de($request->ip()))));
-    }
-
-    private static function dominioDelCorreo(mixed $email): string
-    {
-        if (! is_string($email)) {
-            return '';
-        }
-
-        // Recortado ANTES de procesar: el campo lo escribe el cliente y puede
-        // pesar megas. La clave final igual se hashea (largo fijo).
-        $email = substr($email, 0, 320);
-
-        if (! str_contains($email, '@')) {
-            return '';
-        }
-
-        return strtolower(trim(substr((string) strrchr($email, '@'), 1)));
     }
 }
