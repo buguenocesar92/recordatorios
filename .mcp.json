@@ -21,7 +21,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@playwright/mcp@latest"
+        "@playwright/mcp@0.0.83"
       ],
       "env": {}
     },
@@ -30,7 +30,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "chrome-devtools-mcp@latest",
+        "chrome-devtools-mcp@1.10.1",
         "--autoConnect"
       ],
       "env": {}

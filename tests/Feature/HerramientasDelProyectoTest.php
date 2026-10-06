@@ -104,3 +104,21 @@ it('boost se ejecuta DENTRO del contenedor, no en el equipo de quien trabaja', f
         ->and($orden)->toContain('exec')
         ->and($orden)->toContain('boost:mcp');
 });
+
+it('los MCP que se bajan con npx van con versión fija, nunca @latest', function () {
+    // Un MCP corre con los permisos de quien trabaja (chrome-devtools se engancha
+    // al navegador con la sesión abierta). Con @latest, cada arranque ejecuta lo
+    // último que se publicó: si el paquete se compromete, entra solo y sin
+    // revisión. Se sube de versión a mano, leyendo el cambio.
+    $config = json_decode((string) file_get_contents(base_path('.mcp.json')), true);
+
+    foreach ($config['mcpServers'] as $nombre => $servidor) {
+        if (($servidor['command'] ?? '') !== 'npx') {
+            continue;
+        }
+
+        $paquete = collect($servidor['args'] ?? [])->first(fn (string $arg): bool => ! str_starts_with($arg, '-'));
+
+        expect($paquete)->toMatch('/^(@[^\/]+\/)?[^@]+@\d+\.\d+\.\d+$/', "«{$nombre}» no fija versión: {$paquete}");
+    }
+});
