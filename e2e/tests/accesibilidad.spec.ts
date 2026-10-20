@@ -64,7 +64,19 @@ async function prepararModo(page: Page, modo: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: modo, reducedMotion: 'reduce' });
 
   await page.addInitScript((m) => {
+    // El panel guarda el tema elegido en el localStorage, y Filament 5.10 le
+    // cambió la clave: de «theme» a «filament:theme:mode»
+    // (vendor/filament/filament/resources/js/dark-mode.js). Con la clave vieja
+    // la preferencia se ignoraba, el panel se quedaba en claro —que es lo que
+    // fija «defaultThemeMode(ThemeMode::Light)»— y la comprobación de más abajo
+    // fallaba con «La página no quedó en modo dark» sin que la pantalla
+    // estuviera mal: el problema era que nunca se le pidió el modo oscuro.
+    //
+    // Se escriben las dos claves para que la batería no dependa de la versión
+    // de Filament instalada: con 5.8 o menos se lee la primera, con 5.10 en
+    // adelante la segunda.
     localStorage.setItem('theme', m);
+    localStorage.setItem('filament:theme:mode', m);
   }, modo);
 }
 
