@@ -18,17 +18,28 @@ import { expect, test, type Page } from '@playwright/test';
  * y es invisible para quien desarrolla en claro.
  */
 
+/*
+ * Lo que este archivo midió antes y ya no mide.
+ *
+ * Antes medía también el recorrido guiado —el globo de driver.js— y el
+ * muestrario de componentes. Las dos cosas las quitó el commit a123a47, «Quita
+ * los módulos municipales y los paquetes compartidos sin perder garantías»:
+ * con los paquetes compartidos se fueron la página «/admin/componentes», el
+ * recurso de recorridos, sus rutas «/api/onboarding», el globo y las pruebas
+ * de PHP que los cubrían. Este archivo se quedó atrás, y como el job de
+ * accesibilidad BLOQUEA el merge, el repositorio quedó sin poder fusionar nada.
+ *
+ * La corrección es alinear la medición con la aplicación que existe, no
+ * inventar una pantalla que ya no está. Si alguna vez vuelven el recorrido o
+ * el muestrario, sus pruebas se recuperan tal cual del commit d5d3bda.
+ */
+
 const PANTALLAS = [
   { nombre: 'ingreso', ruta: '/admin/login', conSesion: false },
   { nombre: 'escritorio', ruta: '/admin', conSesion: true },
   { nombre: 'listado de usuarios', ruta: '/admin/usuarios', conSesion: true },
   { nombre: 'crear usuario', ruta: '/admin/usuarios/create', conSesion: true },
   { nombre: 'salud del sistema', ruta: '/admin/salud-del-sistema', conSesion: true },
-  // El muestrario solo existe en desarrollo y en «testing», que es el entorno
-  // con el que el CI levanta la aplicación para esta batería. Entra igual: si
-  // un componente del paquete no cumple contraste, se ve acá antes de que
-  // alguien lo ponga en una pantalla que sí usa un vecino.
-  { nombre: 'muestrario de componentes', ruta: '/admin/componentes', conSesion: true },
 ];
 
 /** Las reglas que se exigen: WCAG 2.2 hasta nivel AA, que es el objetivo. */
@@ -45,87 +56,54 @@ const NORMAS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
  * solo a la prueba mal escrita.
  *
  * Se pide además «menos movimiento». El contraste no depende de ninguna
- * animación, y medir a mitad de un fundido era justo lo que hacía que el
- * resultado cambiara entre corridas (ver «esperarRecorrido»). Antes se
- * escribía acá una clave «admin_tour_seen» para «apagar el recorrido»; nadie
- * la leía —lo completado se guarda en el servidor— y el recorrido salía igual.
+ * animación, y medir a mitad de un fundido hacía que el resultado cambiara
+ * entre corridas: en el panel las tarjetas entran escalonadas, y medio
+ * fundido es medio fundido, mide lo que se pintó y no lo que hay.
  */
 async function prepararModo(page: Page, modo: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: modo, reducedMotion: 'reduce' });
 
   await page.addInitScript((m) => {
+    // El panel guarda el tema elegido en el localStorage, y Filament 5.10 le
+    // cambió la clave: de «theme» a «filament:theme:mode»
+    // (vendor/filament/filament/resources/js/dark-mode.js). Con la clave vieja
+    // la preferencia se ignoraba, el panel se quedaba en claro —que es lo que
+    // fija «defaultThemeMode(ThemeMode::Light)»— y la comprobación de más abajo
+    // fallaba con «La página no quedó en modo dark» sin que la pantalla
+    // estuviera mal: el problema era que nunca se le pidió el modo oscuro.
+    //
+    // Se escriben las dos claves para que la batería no dependa de la versión
+    // de Filament instalada: con 5.8 o menos se lee la primera, con 5.10 en
+    // adelante la segunda.
     localStorage.setItem('theme', m);
+    localStorage.setItem('filament:theme:mode', m);
   }, modo);
 }
 
 /**
- * Espera a que el recorrido guiado esté en pantalla y quieto antes de medir.
+ * Espera a que el panel esté montado antes de medirlo.
  *
- * El recorrido arranca 800 ms después de que la página pide «/api/onboarding»,
- * es decir, DESPUÉS de «networkidle»: axe empezaba con el globo ausente y
- * terminaba con el globo puesto, y lo que atrapaba a medio camino era el
- * fundido de entrada de driver.js. axe mezcla el color del texto con la
- * opacidad del elemento, así que «Siguiente» al 2 % de opacidad daba #fbfbfb
- * sobre blanco: el 1,04:1 que aparecía y desaparecía entre corridas sin que
- * nadie lo viera en pantalla. Así el globo se mide SIEMPRE, en los dos modos,
- * y nunca a medias.
+ * Los widgets los monta Livewire después de la primera respuesta: medirlos
+ * antes deja huecos en la medición, que es peor que no medir, porque el verde
+ * no dice nada. Antes esto lo tapaba el recorrido guiado —que tardaba 800 ms
+ * en salir—; sin recorrido hay que esperarlo a mano.
  *
- * driver.js pone el foco en la «×» de cerrar al dibujar el globo, y con foco la
- * pinta oscura: se quita para medir el estado de reposo, que es el que ve quien
- * usa el ratón. Se quita ANTES de esperar a las animaciones, porque al soltar
- * el foco el color viaja 200 ms («transition: color .2s» de driver.css) y una
- * medición inmediata cae a medio camino: la «×» pasaba por buena con 1,51:1.
- *
- * Se espera solo a las animaciones y transiciones del globo y del velo, no a
- * «todas las de la página»: el muestrario tiene un «muni-shimmer» infinito y
- * esperar a que termine agota el tiempo de la prueba.
+ * La espera es TOLERANTE a propósito: que una pantalla no tenga Livewire
+ * (el ingreso, por ejemplo) no es un fallo de accesibilidad, es que no hay
+ * nada que esperar. Lo que no se tolera es medir una página a medio cargar.
  */
-async function esperarRecorrido(page: Page) {
-  const popover = page.locator('.driver-popover');
-  await popover.waitFor({ state: 'visible', timeout: 20_000 });
+async function esperarPanelListo(page: Page) {
+  await page
+    .waitForFunction(
+      () => {
+        const lw = (window as any).Livewire;
 
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-
-  await page.waitForFunction(() => {
-    // Forzar el recálculo de estilos: una transición recién disparada por el
-    // «blur» tiene que figurar ya en «getAnimations()», no en el cuadro siguiente.
-    const globo = document.querySelector('.driver-popover');
-    if (globo) {
-      getComputedStyle(globo).color;
-    }
-
-    return document.getAnimations().every((animacion) => {
-      const objetivo = (animacion.effect as KeyframeEffect | null)?.target as Element | null;
-
-      return !objetivo
-        || !objetivo.closest('.driver-popover, .driver-overlay')
-        || animacion.playState === 'finished';
-    });
-  });
-}
-
-/**
- * Contraste WCAG (luminancia relativa sRGB) entre el color de un elemento y el
- * fondo de otro, con los colores YA computados por el navegador: mide lo que se
- * pintó de verdad, con los tokens del tema que haya cargado.
- */
-function contraste(page: Page, selectorTexto: string, propiedad: 'color' | 'borderTopColor', selectorFondo: string) {
-  return page.evaluate(([st, prop, sf]) => {
-    const rgb = (s: string) => s.match(/\d+(\.\d+)?/g)!.slice(0, 3).map(Number);
-    const lineal = (c: number) => {
-      c /= 255;
-
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    };
-    const luminancia = ([r, g, b]: number[]) => 0.2126 * lineal(r) + 0.7152 * lineal(g) + 0.0722 * lineal(b);
-
-    const estiloTexto = getComputedStyle(document.querySelector(st)!);
-    const texto = rgb(prop === 'color' ? estiloTexto.color : estiloTexto.borderTopColor);
-    const fondo = rgb(getComputedStyle(document.querySelector(sf)!).backgroundColor);
-    const [a, b] = [luminancia(texto), luminancia(fondo)];
-
-    return Number(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toFixed(2));
-  }, [selectorTexto, propiedad, selectorFondo] as const);
+        return Boolean(lw) && typeof lw.all === 'function' && lw.all().length > 0;
+      },
+      null,
+      { timeout: 10_000 },
+    )
+    .catch(() => undefined);
 }
 
 async function analizar(page: Page) {
@@ -144,7 +122,7 @@ for (const pantalla of PANTALLAS) {
       // Primero, que la pantalla exista: un 403 o un 500 devuelven la página de
       // error de Laravel, que no lleva la clase «dark» y casi no tiene texto.
       // En claro pasaba la comprobación de modo Y la de axe sin que nadie
-      // mirara el muestrario; en oscuro fallaba con un «no quedó en modo dark»
+      // mirara la pantalla; en oscuro fallaba con un «no quedó en modo dark»
       // que apuntaba al tema cuando el problema era el acceso.
       expect(
         respuesta?.status(),
@@ -158,11 +136,10 @@ for (const pantalla of PANTALLAS) {
       );
       expect(modoReal, `La página no quedó en modo ${modo}`).toBe(modo);
 
-      // Con sesión, el recorrido guiado sale solo en cada pantalla del panel:
-      // se espera a que esté puesto y quieto para que el globo entre en la
-      // medición, en los dos modos, y no a medio fundido (ver «esperarRecorrido»).
+      // Con sesión, el panel se monta después de la primera respuesta: se
+      // espera a que esté para que la medición cubra la pantalla completa.
       if (pantalla.conSesion) {
-        await esperarRecorrido(page);
+        await esperarPanelListo(page);
       }
 
       const resultado = await analizar(page);
@@ -182,51 +159,12 @@ for (const pantalla of PANTALLAS) {
   }
 }
 
-/*
- * Lo que axe deja pasar en el recorrido guiado, medido a mano.
- *
- * driver.js trae un globo blanco fijo con la «×» de cerrar en #d2d2d2 (1,51:1)
- * y botones delimitados solo por un borde #ccc (1,61:1). axe no lo reporta: la
- * «×» queda en «incomplete» por contenido demasiado corto, y el borde de un
- * control no es texto (WCAG 1.4.11 pide 3:1 y axe no lo mide). Es lo primero
- * que ve quien llega nuevo al sistema, así que se mide acá, en los dos modos.
- */
-for (const modo of ['light', 'dark'] as const) {
-  test(`el recorrido guiado cumple contraste en sus controles en modo ${modo === 'light' ? 'claro' : 'oscuro'}`, async ({ page }) => {
-    await prepararModo(page, modo);
-    await page.goto('/admin');
-    await esperarRecorrido(page);
-
-    const cerrar = await contraste(page, '.driver-popover-close-btn', 'color', '.driver-popover');
-    const bordeSiguiente = await contraste(page, '.driver-popover-next-btn', 'borderTopColor', '.driver-popover');
-    const textoSiguiente = await contraste(page, '.driver-popover-next-btn', 'color', '.driver-popover-next-btn');
-    const progreso = await contraste(page, '.driver-popover-progress-text', 'color', '.driver-popover');
-
-    // «soft»: que un fallo liste los cuatro pares, no solo el primero que cae.
-    expect.soft(textoSiguiente, `texto del botón «Siguiente» sobre su fondo: ${textoSiguiente}:1 (AA pide 4,5:1)`).toBeGreaterThanOrEqual(4.5);
-    expect.soft(progreso, `texto de progreso «1 de 7» sobre el globo: ${progreso}:1 (AA pide 4,5:1)`).toBeGreaterThanOrEqual(4.5);
-    expect.soft(cerrar, `la «×» de cerrar en reposo sobre el globo: ${cerrar}:1 (AA pide 4,5:1)`).toBeGreaterThanOrEqual(4.5);
-    expect.soft(bordeSiguiente, `borde del botón «Siguiente» sobre el globo: ${bordeSiguiente}:1 (WCAG 1.4.11 pide 3:1)`).toBeGreaterThanOrEqual(3);
-  });
-}
-
-test('el recorrido guiado respeta prefers-reduced-motion', async ({ page }) => {
-  // «prepararModo» ya pide menos movimiento. driver.js marca el cuerpo con
-  // «driver-fade» cuando anima y con «driver-simple» cuando no: con la
-  // preferencia activa tiene que ser lo segundo (WCAG 2.3.3). Además, sin
-  // fundido no queda ventana en la que axe pueda medir el globo a medias.
-  await prepararModo(page, 'light');
-  await page.goto('/admin');
-  await page.locator('.driver-popover').waitFor({ state: 'visible', timeout: 20_000 });
-
-  await expect(page.locator('body')).toHaveClass(/driver-simple/);
-});
-
 test('el panel se recorre entero con el teclado', async ({ page }) => {
   // Quien no puede usar el ratón tiene que poder llegar a todo. Y el foco tiene
   // que VERSE: un anillo invisible es lo mismo que no tenerlo.
   await page.goto('/admin');
   await page.waitForLoadState('load');
+  await esperarPanelListo(page);
 
   const paradas: string[] = [];
 
