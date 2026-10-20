@@ -36,7 +36,19 @@ class CodigoDeRescate extends Command
 
     public function handle(): int
     {
-        $correo = (string) $this->argument('correo');
+        // Laravel 13.37 amplió el tipo de retorno de «argument()»: ahora puede
+        // devolver un array si el argumento se declaró como array. Este es de
+        // texto, así que se comprueba en vez de castear a ciegas: un «(string)»
+        // sobre un array es un aviso silencioso y un «TypeError» si el array
+        // tiene más de un elemento.
+        $correo = $this->argument('correo');
+
+        if (! is_string($correo)) {
+            $this->error('El correo tiene que ser un texto.');
+
+            return self::FAILURE;
+        }
+
         $usuario = User::where('email', $correo)->first();
 
         if (! $usuario) {

@@ -52,7 +52,12 @@ class ProvisionEnvironment extends Command
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        if ($email = $this->option('admin-email')) {
+        // El tipo de «option()» se amplió en Laravel 13.37 (puede devolver un
+        // array). Este es un correo: si no es texto, no hay superusuario que
+        // crear con él y se sigue por el camino de siempre.
+        $email = $this->option('admin-email');
+
+        if (is_string($email) && $email !== '') {
             return $this->crearSuperAdmin($email);
         }
 

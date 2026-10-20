@@ -28,7 +28,17 @@ class GeocodeAddresses extends Command
 
     public function handle(): int
     {
+        // Laravel 13.37 amplió el tipo de retorno de «argument()» y «option()»:
+        // pueden devolver un array, un número o un booleano, no solo texto.
+        // Estos son de texto, así que se estrechan antes de usarlos en vez de
+        // castear a ciegas.
         $modelClass = $this->argument('model');
+
+        if (! is_string($modelClass)) {
+            $this->error('El nombre de la clase del modelo tiene que ser un texto.');
+
+            return self::FAILURE;
+        }
 
         if (! class_exists($modelClass)) {
             $this->error("La clase del modelo '{$modelClass}' no existe.");
@@ -36,10 +46,18 @@ class GeocodeAddresses extends Command
             return self::FAILURE;
         }
 
-        $addressCol = (string) $this->option('address');
-        $latCol = (string) $this->option('lat');
-        $lngCol = (string) $this->option('lng');
-        $limit = (int) $this->option('limit');
+        $addressCol = $this->option('address');
+        $latCol = $this->option('lat');
+        $lngCol = $this->option('lng');
+        $limit = $this->option('limit');
+
+        if (! is_string($addressCol) || ! is_string($latCol) || ! is_string($lngCol) || ! is_string($limit)) {
+            $this->error('Las columnas y el límite tienen que ser texto.');
+
+            return self::FAILURE;
+        }
+
+        $limit = (int) $limit;
 
         $query = $modelClass::query()
             ->whereNotNull($addressCol)

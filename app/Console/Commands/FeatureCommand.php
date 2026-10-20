@@ -31,8 +31,16 @@ class FeatureCommand extends Command
 
     public function handle(): int
     {
-        $nombre = (string) $this->argument('nombre');
-        $estado = (string) $this->argument('estado');
+        // El tipo de «argument()» se amplió en Laravel 13.37 (puede devolver un
+        // array). Estos dos son de texto, así que se estrechan antes de usarse.
+        $nombre = $this->argument('nombre');
+        $estado = $this->argument('estado');
+
+        if (! is_string($nombre) || ! is_string($estado)) {
+            $this->error('El nombre de la feature y su estado tienen que ser texto.');
+
+            return self::FAILURE;
+        }
 
         /** @var array<string, bool> $declaradas */
         $declaradas = config('features', []);
