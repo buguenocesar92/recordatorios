@@ -149,7 +149,19 @@ RUN npm run build
 # tests/Feature/HigieneDeDespliegueTest.php falla si alguien vuelve a dejar una
 # etiqueta flotante, y `tools/auditar.sh` lo comprueba en todos los repos
 # hermanos de una pasada.
-FROM dunglas/frankenphp:1.12.7-php8.5-alpine
+FROM dunglas/frankenphp:1.13.1-php8.5-alpine
+# ──────────────────────────────────────────────────────────────────────────────
+#  Actualización del sistema base de la imagen (CVE-2026-109618 / CVE-2026-109619).
+#
+#  La base de FrankenPHP es Alpine: sus paquetes de sistema (musl, busybox,
+#  openssl) llegan con la foto publicada y se quedan en la versión de ese día.
+#  «apk update && apk upgrade» los trae al último parche disponible en el momento
+#  de construir esta imagen, para que el contenedor no herede los CVE del paquete
+#  tal como estaba cuando se publicó la etiqueta.
+#
+#  OJO: «apk upgrade» NO es apt y NO acepta «-y»: con «-y» el build falla.
+# ──────────────────────────────────────────────────────────────────────────────
+RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
 
 # Instalación de extensiones de alto rendimiento
 RUN install-php-extensions \
@@ -195,6 +207,20 @@ COPY docker/supervisord.conf /etc/supervisord.conf
 # Ajustes de PHP propios (ver el archivo: hoy solo expose_php)
 COPY docker/php-seguridad.ini /usr/local/etc/php/conf.d/zz-seguridad.ini
 
+# Endurecimiento defensivo contra CVE-2026-109618 / CVE-2026-109619 (PHP2Shell).
+# Se copia como «99-…» a propósito: en «conf.d» los ficheros se cargan por orden
+# alfabético y «99-» carga ANTES que «zz-seguridad.ini», así que este fichero no
+# pisa ningún ajuste del repo (topes de subida, «zend.exception_ignore_args»).
+COPY docker/99-php2shell-hardening.ini /usr/local/etc/php/conf.d/99-php2shell-hardening.ini
+
+# Capa defensiva de Octane: el wrapper reescribe «--max-requests» a 100 y
+# antepone a «PATH» el shim de «php», que hace lo mismo en cualquier invocación
+# de «php». Es la red de seguridad para el caso de que el código montado en
+# «/app» sea una versión vieja con «--max-requests=500».
+COPY docker/harden-octane-maxrequests.sh /usr/local/bin/harden-octane-maxrequests.sh
+COPY docker/php-shim /opt/php2shell/bin/php
+RUN chmod +x /usr/local/bin/harden-octane-maxrequests.sh /opt/php2shell/bin/php
+
 # Las reglas de caché de los estáticos. Se copian a /etc/caddy porque es la ruta
 # que busca config/octane.php: si el archivo no está, la clave queda vacía y el
 # sitio funciona igual, solo que cada visitante se vuelve a bajar todo.
@@ -235,4 +261,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8000/up -o /dev/null || exit 1
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/harden-octane-maxrequests.sh"]
