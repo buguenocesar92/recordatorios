@@ -96,9 +96,11 @@ como_app php artisan route:cache
 como_app php artisan filament:optimize || true
 
 echo "⚡ Iniciando Octane (FrankenPHP worker mode)..."
+# 100 peticiones por worker antes de reciclarlo: acota la ventana de vida de
+# cualquier estado en memoria (es el equivalente a «pm.max_requests» de PHP-FPM).
 exec su-exec "$APP_USER" php artisan octane:start \
     --server=frankenphp \
     --host=0.0.0.0 \
     --port=8000 \
     --workers="${OCTANE_WORKERS:-2}" \
-    --max-requests=500
+    --max-requests=100

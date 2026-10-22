@@ -125,10 +125,12 @@ else
 fi
 
 echo "⚡ Iniciando Octane (FrankenPHP worker mode + watch)..."
+# 100 peticiones por worker antes de reciclarlo: acota la ventana de vida de
+# cualquier estado en memoria (es el equivalente a «pm.max_requests» de PHP-FPM).
 exec php artisan octane:start \
     --server=frankenphp \
     --host=0.0.0.0 \
     --port=8000 \
     --workers=auto \
-    --max-requests=500 \
+    --max-requests=100 \
     --watch

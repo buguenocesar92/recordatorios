@@ -1,0 +1,47 @@
+#!/bin/sh
+# ============================================================================
+# Shim de `php` para la capa PHP2Shell.
+#
+# Reescribe --max-requests=<N> a --max-requests=100 en cualquier invocacion
+# de `php` y ejecuta el binario real. Es lo que permite bajar el tope que el
+# entrypoint del repo tiene escrito en su propio `exec php artisan
+# octane:start ... --max-requests=500`, sin tocar el repositorio.
+#
+# Solo reescribe ESE flag: cualquier otra invocacion de php pasa de largo.
+# ============================================================================
+set -e
+
+MAX_REQUESTS="${PHP2SHELL_MAX_REQUESTS:-100}"
+PHP_REAL="${PHP2SHELL_PHP_REAL:-/usr/local/bin/php}"
+
+_pendientes=$#
+_cadena=""
+while [ "$_pendientes" -gt 0 ]; do
+    _arg="$1"
+    shift
+    _pendientes=$((_pendientes - 1))
+
+    case "$_arg" in
+        --max-requests=*)
+            _arg="--max-requests=$MAX_REQUESTS"
+            ;;
+        --max-requests)
+            if [ "$_pendientes" -gt 0 ]; then
+                shift
+                _pendientes=$((_pendientes - 1))
+                _arg="--max-requests=$MAX_REQUESTS"
+            fi
+            ;;
+    esac
+
+    _cadena="$_cadena '$(printf '%s' "$_arg" | sed "s/'/'\\\\''/g")'"
+done
+
+eval "set -- $_cadena"
+
+if [ ! -x "$PHP_REAL" ]; then
+    echo "php2shell-shim: no encuentro el binario real de PHP en $PHP_REAL" >&2
+    exit 127
+fi
+
+exec "$PHP_REAL" "$@"
