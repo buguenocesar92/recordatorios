@@ -11,6 +11,8 @@ FROM composer:2 AS vendor
 # PHP —el de la imagen composer:2, no el de producción— y falla en el primer
 # paquete que declare "ext-intl" (filament/support la exige) aunque la imagen
 # final sí la traiga.
+# composer:2 ya no incluye install-php-extensions; se fija desde la imagen oficial.
+COPY --from=mlocati/php-extension-installer:2.13.1@sha256:35821db0661308f64aa18483bb3af56bedc3b40090ff441ed961327d1ccbceb8 /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions pdo_mysql pcntl redis zip gd intl
 WORKDIR /app
 
@@ -149,7 +151,7 @@ RUN npm run build
 # tests/Feature/HigieneDeDespliegueTest.php falla si alguien vuelve a dejar una
 # etiqueta flotante, y `tools/auditar.sh` lo comprueba en todos los repos
 # hermanos de una pasada.
-FROM dunglas/frankenphp:1.13.1-php8.5-alpine
+FROM dunglas/frankenphp:1.13.2-php8.5-alpine
 # ──────────────────────────────────────────────────────────────────────────────
 #  Actualización del sistema base de la imagen (CVE-2026-109618 / CVE-2026-109619).
 #

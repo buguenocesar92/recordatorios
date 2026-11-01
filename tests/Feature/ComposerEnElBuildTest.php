@@ -51,3 +51,30 @@ it('el workflow de despliegue pasa el token de composer como secreto de build, n
         ->and($workflow)->toContain('composer_auth=')
         ->and($workflow)->toContain('secrets.COMPOSER_GH_TOKEN');
 });
+
+it('fija install-php-extensions en la etapa vendor antes de ejecutarlo', function () {
+    $dockerfile = (string) file_get_contents(base_path('Dockerfile'));
+    $lineas = preg_split('/\R/', $dockerfile) ?: [];
+
+    $comentario = '# composer:2 ya no incluye install-php-extensions; se fija desde la imagen oficial.';
+    $copy = 'COPY --from=mlocati/php-extension-installer:2.13.1@sha256:35821db0661308f64aa18483bb3af56bedc3b40090ff441ed961327d1ccbceb8 /usr/bin/install-php-extensions /usr/local/bin/';
+    $run = 'RUN install-php-extensions pdo_mysql pcntl redis zip gd intl';
+
+    $indiceVendor = array_search('FROM composer:2 AS vendor', $lineas, true);
+    $indiceRuntime = array_search('FROM dunglas/frankenphp:1.13.2-php8.5-alpine', $lineas, true);
+    $indiceComentario = array_search($comentario, $lineas, true);
+    $indiceCopy = array_search($copy, $lineas, true);
+    $indiceRun = array_search($run, $lineas, true);
+
+    expect($indiceVendor)->not->toBeFalse()
+        ->and($indiceRuntime)->not->toBeFalse()
+        ->and($indiceComentario)->not->toBeFalse()
+        ->and($indiceCopy)->not->toBeFalse()
+        ->and($indiceRun)->not->toBeFalse()
+        ->and(substr_count($dockerfile, $copy))->toBe(1)
+        ->and($indiceComentario)->toBe($indiceCopy - 1)
+        ->and($indiceCopy)->toBe($indiceRun - 1)
+        ->and($indiceCopy)->toBeGreaterThan($indiceVendor)
+        ->and($indiceCopy)->toBeLessThan($indiceRuntime)
+        ->and(implode(chr(10), array_slice($lineas, (int) $indiceRuntime)))->not->toContain($copy);
+});
