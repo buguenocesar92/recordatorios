@@ -61,7 +61,7 @@ it('fija install-php-extensions en la etapa vendor antes de ejecutarlo', functio
     $run = 'RUN install-php-extensions pdo_mysql pcntl redis zip gd intl';
 
     $indiceVendor = array_search('FROM composer:2 AS vendor', $lineas, true);
-    $indiceRuntime = array_search('FROM dunglas/frankenphp:1.13.1-php8.5-alpine', $lineas, true);
+    $indiceRuntime = array_search('FROM dunglas/frankenphp:1.13.2-php8.5-alpine', $lineas, true);
     $indiceComentario = array_search($comentario, $lineas, true);
     $indiceCopy = array_search($copy, $lineas, true);
     $indiceRun = array_search($run, $lineas, true);
