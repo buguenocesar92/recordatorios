@@ -149,7 +149,7 @@ RUN npm run build
 # tests/Feature/HigieneDeDespliegueTest.php falla si alguien vuelve a dejar una
 # etiqueta flotante, y `tools/auditar.sh` lo comprueba en todos los repos
 # hermanos de una pasada.
-FROM dunglas/frankenphp:1.13.1-php8.5-alpine
+FROM dunglas/frankenphp:1.13.2-php8.5-alpine
 # ──────────────────────────────────────────────────────────────────────────────
 #  Actualización del sistema base de la imagen (CVE-2026-109618 / CVE-2026-109619).
 #
