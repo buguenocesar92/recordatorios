@@ -328,7 +328,7 @@ it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shel
     // mínima corregida, para que subir sea una tarea consciente, con su
     // commit y su build.
     preg_match_all(
-        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)(?:-[a-z0-9.]+)*\s*$/mi',
+        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)-php\d+\.\d+-alpine\s*$/mi',
         (string) file_get_contents(base_path('Dockerfile')),
         $versiones
     );
