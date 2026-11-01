@@ -317,6 +317,33 @@ it('la imagen base de FrankenPHP está fijada a una versión concreta', function
     }
 });
 
+it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shell', function () {
+    // El candado de arriba vigila que la etiqueta sea CONCRETA: que no se mueva
+    // sola. Éste vigila que además sea NUEVA: una etiqueta concreta y vieja
+    // (1.13.1) pasa el candado de arriba y deja el servidor con el CVE
+    // abierto.
+    //
+    // 1.13.2 es el mínimo que cierra PHP2Shell (CVE-2026-109618/109619) y
+    // GHSA-4gfw-9v29-gp9h. El candado NO fija la última versión: fija la
+    // mínima corregida, para que subir sea una tarea consciente, con su
+    // commit y su build.
+    preg_match_all(
+        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)-php\d+\.\d+-alpine\s*$/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $versiones
+    );
+
+    expect($versiones[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile ya no declara una imagen base de FrankenPHP con versión'
+    );
+
+    foreach ($versiones[1] as $version) {
+        expect(version_compare($version, '1.13.2', '>='))->toBeTrue(
+            "«{$version}» está por debajo del mínimo FrankenPHP 1.13.2: deja abierto PHP2Shell (CVE-2026-109618/109619)"
+        );
+    }
+});
+
 it('la imagen sabe decir si está sana, y lo dice con una shell', function () {
     // La imagen base NO viene sin chequeo, y ahí está la trampa:
     // `dunglas/frankenphp` declara el suyo contra `localhost:2019/metrics`, la
