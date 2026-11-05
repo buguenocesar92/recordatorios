@@ -64,6 +64,47 @@ function herramientaQueFaltaParaElHookPrePush(): ?string
 }
 
 /**
+ * ¿El rango que recibió el escáner recorre el commit `$sha`?
+ *
+ * El contrato vigente del gate recorre la ascendencia completa del sha local
+ * y no excluye todos los remotos. Se comprueba el commit cubierto, no la
+ * forma literal del rango.
+ */
+function rangoCubreElCommit(string $repo, string $rango, string $sha): bool
+{
+    $palabras = preg_split('/\s+/', trim($rango)) ?: [];
+    $local = $palabras[0] ?? '';
+
+    if ($local === '' || ! preg_match('/^[0-9a-f]{40}$/', $local)) {
+        return false;
+    }
+
+    // `merge-base --is-ancestor` comunica por código de salida, no por stdout.
+    $salida = [];
+    $codigo = 0;
+    exec(sprintf(
+        'git -C %s merge-base --is-ancestor %s %s 2>/dev/null',
+        escapeshellarg($repo),
+        escapeshellarg($sha),
+        escapeshellarg($local)
+    ), $salida, $codigo);
+
+    return $codigo === 0 && ! in_array('--not --remotes', $palabras, true);
+}
+
+/** ¿El rango acota la exclusión al remoto indicado y configurado? */
+function rangoAcotaLaExclusion(string $repo, string $rango, string $remoto): bool
+{
+    $remotos = trim((string) shell_exec(sprintf('git -C %s remote 2>/dev/null', escapeshellarg($repo))));
+
+    if (! in_array($remoto, preg_split('/\s+/', $remotos), true)) {
+        return false;
+    }
+
+    return str_contains($rango, '--not --remotes='.$remoto);
+}
+
+/**
  * Monta un remoto bare y un checkout con el Makefile y los hooks reales,
  * Docker simulado y un escáner sintético con su propio pin válido.
  *
@@ -291,7 +332,8 @@ it('publica una rama de trabajo desde develop sin correr la suite', function () 
     expect($push->isSuccessful())->toBeTrue("el hook canceló el envío de una rama de trabajo:\n".$salida)
         ->and(file_exists($repo.'/suite-invocada'))->toBeFalse("el hook corrió la suite para una rama de trabajo por estar parado en develop:\n".$salida)
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/trabajo'))->toBe($sha, 'la rama de trabajo no llegó al remoto')
-        ->and(File::get($repo.'/escaneos'))->toBe($sha." --not --remotes\n");
+        ->and(rangoCubreElCommit($repo, trim(File::get($repo.'/escaneos')), $sha))->toBeTrue('el rango que recibió el escáner no recorre el commit enviado')
+        ->and(rangoAcotaLaExclusion($repo, trim(File::get($repo.'/escaneos')), 'origin'))->toBeTrue('el rango no acotó la exclusión al remoto destino');
 })->skip(herramientaQueFaltaParaElHookPrePush() !== null, 'el hook es bash y usa git y make: sin ellos (p. ej. dentro del contenedor) no se puede ejecutar');
 
 it('sigue bloqueando el envío directo a main', function () {
@@ -347,8 +389,12 @@ it('escanea todas las refs de un envío y rechaza el conjunto si falla la segund
     ]);
     $salida = $push->getOutput().$push->getErrorOutput();
 
+    $escaneos = array_values(array_filter(array_map('trim', explode("\n", File::get($repo.'/escaneos')))));
+
     expect($push->isSuccessful())->toBe(! $rechazarSegunda, $salida)
-        ->and(File::get($repo.'/escaneos'))->toBe($primera." --not --remotes\n".$segunda." --not --remotes\n")
+        ->and(count($escaneos))->toBe(2, 'el escáner no recibió un rango por cada ref del envío')
+        ->and(rangoCubreElCommit($repo, $escaneos[0], $primera))->toBeTrue('el primer rango no recorre el primer commit')
+        ->and(rangoCubreElCommit($repo, $escaneos[1], $segunda))->toBeTrue('el segundo rango no recorre el segundo commit')
         ->and(file_exists($repo.'/suite-invocada'))->toBeFalse()
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/primera'))->toBe($rechazarSegunda ? null : $primera)
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/segunda'))->toBe($rechazarSegunda ? null : $segunda);
@@ -371,5 +417,5 @@ it('rechaza una rama nueva cuyo secreto está en un commit intermedio', function
     expect($push->isSuccessful())->toBeFalse("el hook dejó pasar un secreto en un commit intermedio de una rama nueva:\n".$salida)
         ->and(str_contains($salida, 'escáner sintético rechazó la ref'))->toBeTrue("el envío se canceló por otra causa:\n".$salida)
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/secreto'))->toBeNull('la rama con el secreto llegó al remoto')
-        ->and(File::get($repo.'/escaneos'))->toBe($limpio." --not --remotes\n");
+        ->and(rangoCubreElCommit($repo, trim(File::get($repo.'/escaneos')), $conSecreto))->toBeTrue('el rango que recibió el escáner no recorre el commit con el secreto');
 })->skip(herramientaQueFaltaParaElHookPrePush() !== null, 'el hook es bash y usa git y make: sin ellos (p. ej. dentro del contenedor) no se puede ejecutar');
