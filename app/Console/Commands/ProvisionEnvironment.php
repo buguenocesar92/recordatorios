@@ -52,7 +52,15 @@ class ProvisionEnvironment extends Command
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        if ($email = $this->option('admin-email')) {
+        $email = $this->option('admin-email');
+
+        if ($email !== null && ! is_string($email)) {
+            $this->error('La opción --admin-email debe ser texto o quedar vacía.');
+
+            return self::FAILURE;
+        }
+
+        if ($email !== null && $email !== '') {
             return $this->crearSuperAdmin($email);
         }
 
@@ -70,7 +78,23 @@ class ProvisionEnvironment extends Command
             return self::FAILURE;
         }
 
-        $password = $this->option('admin-password')
+        $passwordOption = $this->option('admin-password');
+
+        if ($passwordOption !== null && ! is_string($passwordOption)) {
+            $this->error('La opción --admin-password debe ser texto o quedar vacía.');
+
+            return self::FAILURE;
+        }
+
+        $adminName = $this->option('admin-name');
+
+        if (! is_string($adminName)) {
+            $this->error('La opción --admin-name debe ser texto.');
+
+            return self::FAILURE;
+        }
+
+        $password = $passwordOption
             ?: ($this->input->isInteractive() ? $this->secret('Contraseña del super admin') : null);
 
         if (! $password) {
@@ -86,7 +110,7 @@ class ProvisionEnvironment extends Command
         // --reset-password, que obliga a decirlo a propósito.
         $user = User::firstOrCreate(
             ['email' => $email],
-            ['name' => $this->option('admin-name'), 'password' => $password],
+            ['name' => $adminName, 'password' => $password],
         );
 
         if (! $user->wasRecentlyCreated && $this->option('reset-password')) {

@@ -36,7 +36,14 @@ class CodigoDeRescate extends Command
 
     public function handle(): int
     {
-        $correo = (string) $this->argument('correo');
+        $correo = $this->argument('correo');
+
+        if (! is_string($correo)) {
+            $this->error('El argumento "correo" debe ser texto.');
+
+            return self::FAILURE;
+        }
+
         $usuario = User::where('email', $correo)->first();
 
         if (! $usuario) {

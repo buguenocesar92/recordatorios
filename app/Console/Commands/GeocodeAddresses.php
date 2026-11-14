@@ -30,16 +30,30 @@ class GeocodeAddresses extends Command
     {
         $modelClass = $this->argument('model');
 
+        if (! is_string($modelClass)) {
+            $this->error('El argumento "model" debe ser texto.');
+
+            return self::FAILURE;
+        }
+
         if (! class_exists($modelClass)) {
             $this->error("La clase del modelo '{$modelClass}' no existe.");
 
             return self::FAILURE;
         }
 
-        $addressCol = (string) $this->option('address');
-        $latCol = (string) $this->option('lat');
-        $lngCol = (string) $this->option('lng');
-        $limit = (int) $this->option('limit');
+        $addressCol = $this->option('address');
+        $latCol = $this->option('lat');
+        $lngCol = $this->option('lng');
+        $limitOption = $this->option('limit');
+
+        if (! is_string($addressCol) || ! is_string($latCol) || ! is_string($lngCol) || ! is_string($limitOption)) {
+            $this->error('Las opciones --address, --lat, --lng y --limit deben ser texto.');
+
+            return self::FAILURE;
+        }
+
+        $limit = (int) $limitOption;
 
         $query = $modelClass::query()
             ->whereNotNull($addressCol)
