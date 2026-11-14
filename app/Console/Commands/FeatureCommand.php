@@ -31,8 +31,20 @@ class FeatureCommand extends Command
 
     public function handle(): int
     {
-        $nombre = (string) $this->argument('nombre');
-        $estado = (string) $this->argument('estado');
+        $nombre = $this->argument('nombre');
+        $estado = $this->argument('estado');
+
+        if (! is_string($nombre)) {
+            $this->error('El argumento "nombre" debe ser texto.');
+
+            return self::FAILURE;
+        }
+
+        if (! is_string($estado)) {
+            $this->error('El argumento "estado" debe ser texto.');
+
+            return self::FAILURE;
+        }
 
         /** @var array<string, bool> $declaradas */
         $declaradas = config('features', []);
