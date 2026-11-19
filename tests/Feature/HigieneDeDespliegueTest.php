@@ -344,6 +344,50 @@ it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shel
     }
 });
 
+it('la imagen trae la mitigación de CVE-2026-126714 para las sesiones nativas', function () {
+    // CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): el manejador «files» de ext-session
+    // reescribe el archivo de sesión SIN truncarlo. Una escritura interrumpida
+    // deja la sesión nueva y la vieja mezcladas en el mismo archivo, y al
+    // deserializar eso se pueden inyectar objetos: ejecución remota de código.
+    //
+    // El vector de entrada es «session.upload_progress»: con la clave de sesión
+    // «PHP_SESSION_UPLOAD_PROGRESS» el atacante abre una sesión nativa «files»
+    // desde cualquier petición multipart. Laravel no usa ext-session (sus
+    // drivers son propios), pero ese manejador RFC1867 sí crea sesiones
+    // nativas en cualquier petición multipart con cookie «PHPSESSID». Por eso
+    // la mitigación va en el php.ini de la imagen y no en «config/session.php».
+    $ini = base_path('docker/php/99-security-cve-2026-126714.ini');
+
+    expect(file_exists($ini))->toBeTrue(
+        'Falta la mitigación de CVE-2026-126714: docker/php/99-security-cve-2026-126714.ini'
+    );
+
+    // LÍNEAS EXACTAS, no «que las contenga»: una directiva con el valor
+    // equivocado (o con otro espaciado) no mitiga nada y el candado tiene que
+    // notarlo.
+    $lineas = preg_split('/\R/', (string) file_get_contents($ini)) ?: [];
+
+    foreach ([
+        'session.upload_progress.enabled = Off',
+        'session.upload_progress.cleanup = On',
+        'session.serialize_handler = php_serialize',
+        'session.use_strict_mode = 1',
+    ] as $directiva) {
+        expect(in_array($directiva, $lineas, true))->toBeTrue(
+            "El ini de CVE-2026-126714 no fija la directiva exacta «{$directiva}»"
+        );
+    }
+
+    // Y que llegue a la imagen: un ini en el repositorio que nadie copia es un
+    // documento, no una mitigación.
+    $dockerfile = (string) file_get_contents(base_path('Dockerfile'));
+
+    expect($dockerfile)->toMatch(
+        '#^COPY\s+docker/php/99-security-cve-2026-126714\.ini\s+/usr/local/etc/php/conf\.d/99-security-cve-2026-126714\.ini\s*$#m',
+        'El Dockerfile no copia el ini de CVE-2026-126714 al conf.d de PHP'
+    );
+});
+
 it('la imagen sabe decir si está sana, y lo dice con una shell', function () {
     // La imagen base NO viene sin chequeo, y ahí está la trampa:
     // `dunglas/frankenphp` declara el suyo contra `localhost:2019/metrics`, la

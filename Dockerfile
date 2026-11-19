@@ -215,6 +215,23 @@ COPY docker/php-seguridad.ini /usr/local/etc/php/conf.d/zz-seguridad.ini
 # pisa ningún ajuste del repo (topes de subida, «zend.exception_ignore_args»).
 COPY docker/99-php2shell-hardening.ini /usr/local/etc/php/conf.d/99-php2shell-hardening.ini
 
+# Mitigación de CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): el manejador «files» de
+# ext-session reescribe el archivo de sesión SIN truncarlo. Una escritura
+# interrumpida deja mezcladas la sesión nueva y la vieja en el mismo archivo, y
+# al deserializar eso se pueden inyectar objetos: ejecución remota de código.
+#
+# El vector de entrada es «session.upload_progress»: con la clave de sesión
+# «PHP_SESSION_UPLOAD_PROGRESS» el atacante abre una sesión nativa «files» desde
+# cualquier petición multipart. Laravel no usa ext-session —sus drivers son
+# propios—, pero ese manejador RFC1867 sí crea sesiones nativas en cualquier
+# petición multipart con cookie «PHPSESSID». Por eso la mitigación va en el
+# php.ini de la imagen y no en «config/session.php».
+#
+# Se copia como «99-…» a propósito: en «conf.d» los ficheros se cargan por orden
+# alfabético, así que este queda después de «99-php2shell-hardening.ini» (que
+# apaga la misma cosa) y antes de «zz-seguridad.ini» (que no toca sesiones).
+COPY docker/php/99-security-cve-2026-126714.ini /usr/local/etc/php/conf.d/99-security-cve-2026-126714.ini
+
 # Capa defensiva de Octane: el wrapper reescribe «--max-requests» a 100 y
 # antepone a «PATH» el shim de «php», que hace lo mismo en cualquier invocación
 # de «php». Es la red de seguridad para el caso de que el código montado en
