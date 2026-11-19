@@ -370,6 +370,61 @@ it('la imagen base lleva un PHP con el arreglo de CVE-2026-126714', function () 
     }
 });
 
+it('la imagen de Composer que compila vendor/ está fijada a versión y digest', function () {
+    // `composer:2` es una etiqueta que se MUEVE: el mantenedor la reapunta
+    // cada vez que publica una versión. El 2026-11-19 pasó a traer PHP 8.6, y
+    // la extensión «redis» de PECL —la 6.3.0, la última— NO compila contra
+    // PHP 8.6 («XtOffsetOf», «INI_STR», «INI_INT» y «zval_dtor» desaparecieron
+    // en esa versión). El build entero se rompía en la etapa «vendor», que es
+    // la primera: sin imagen no hay despliegue, y con ella no llega al
+    // servidor el arreglo de CVE-2026-126714.
+    //
+    // Se fija igual que la de FrankenPHP: versión completa Y digest.
+    preg_match_all(
+        '/^FROM\s+composer:(\S+)\s+AS vendor\s*$/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $etapas
+    );
+
+    expect($etapas[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile ya no declara una imagen de Composer para la etapa «vendor»'
+    );
+
+    foreach ($etapas[1] as $referencia) {
+        expect($referencia)->toMatch(
+            '/^\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$/',
+            "«composer:{$referencia}» es una etiqueta flotante o no está fijada por digest: fija la versión completa de Composer y el digest (p. ej. 2.11.1@sha256:…)"
+        );
+    }
+});
+
+it('la imagen de Composer que compila vendor/ no sube a una versión con PHP 8.6', function () {
+    // La extensión «redis» de PECL (6.3.0, la última publicada) usa «XtOffsetOf»,
+    // «INI_STR», «INI_INT» y «zval_dtor»: APIs que PHP 8.6 quitó. Con PHP 8.6
+    // el «install-php-extensions redis» de la etapa «vendor» no compila y el
+    // build se cae entero. Por eso la imagen de Composer se queda en la
+    // 2.11.1, que es la última que trae PHP 8.5 (8.5.12).
+    //
+    // El candado NO vigila la última versión de Composer: vigila que no se
+    // suba a una que traiga PHP 8.6 mientras «redis» no compile contra ella.
+    // Subirla, cuando toque, es una tarea consciente: con su commit y su build.
+    preg_match_all(
+        '/^FROM\s+composer:(\d+\.\d+\.\d+)@\S+\s+AS vendor\s*$/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $versiones
+    );
+
+    expect($versiones[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile no declara una imagen de Composer FIJADA (versión completa y digest) para la etapa «vendor»: sin fijar, la etiqueta flotante puede traer un PHP con el que «redis» no compila'
+    );
+
+    foreach ($versiones[1] as $version) {
+        expect(version_compare($version, '2.11.2', '<'))->toBeTrue(
+            "«composer:{$version}» trae PHP 8.6 y la extensión «redis» de PECL no compila contra esa versión: la etapa «vendor» del build se cae. Súbela sólo cuando «redis» compile contra PHP 8.6 (o cuando la imagen vuelva a traer PHP 8.5)."
+        );
+    }
+});
+
 it('la imagen trae la mitigación de CVE-2026-126714 para las sesiones nativas', function () {
     // CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): el manejador «files» de ext-session
     // reescribe el archivo de sesión SIN truncarlo. Una escritura interrumpida

@@ -5,10 +5,21 @@
 # internet ese día —con el arranque de producción dependiendo de github.com y
 # de packagist, y sin garantía de que un rollback a la imagen anterior vuelva
 # con el mismo `vendor`—.
-FROM composer:2 AS vendor
+# La imagen de Composer va FIJADA —versión completa y digest—, como la de
+# FrankenPHP más abajo. La etiqueta «composer:2» se mueve: el 2026-11-19 pasó a
+# traer PHP 8.6, y contra PHP 8.6 la extensión «redis» de PECL —la 6.3.0, la
+# última publicada— NO compila: usa «XtOffsetOf», «INI_STR», «INI_INT» y
+# «zval_dtor», que PHP 8.6 quitó. El build entero se caía en esta etapa, que
+# es la primera: sin imagen no hay despliegue, y con ella no llegaba al
+# servidor el arreglo de CVE-2026-126714.
+#
+# La 2.11.1 es la última imagen que trae PHP 8.5 (8.5.12): el mismo menor que
+# el de producción, para que el «composer install» de esta etapa verifique los
+# requisitos de plataforma contra el mismo PHP que va a correr la aplicación.
+FROM composer:2.11.1@sha256:8de2184c6de224f4689e8f80ed5f5edaf0030b6b8b7839a22a2bcb6722ac87d0 AS vendor
 # Mismas extensiones que la etapa de runtime (más abajo): sin esto, `composer
 # install` verifica los requisitos de plataforma de cada paquete contra ESTE
-# PHP —el de la imagen composer:2, no el de producción— y falla en el primer
+# PHP —el de la imagen de Composer, no el de producción— y falla en el primer
 # paquete que declare "ext-intl" (filament/support la exige) aunque la imagen
 # final sí la traiga.
 # composer:2 ya no incluye install-php-extensions; se fija desde la imagen oficial.
@@ -199,8 +210,10 @@ RUN install-php-extensions \
 # "unhealthy" para siempre aunque la app esté sana)
 RUN apk add --no-cache curl supervisor mariadb-client nodejs npm su-exec
 
-# Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Composer. Se copia de la etapa «vendor» —que usa la imagen FIJADA— y no de
+# «composer:2»: la etiqueta se mueve, y una imagen final que traiga una versión
+# de Composer que nadie eligió no es la que explica este commit.
+COPY --from=vendor /usr/bin/composer /usr/bin/composer
 
 # El worker mode lo gestiona `php artisan octane:start --server=frankenphp`
 # (ver entrypoints). No usamos FRANKENPHP_CONFIG/APP_RUNTIME porque Octane
