@@ -311,8 +311,8 @@ it('la imagen base de FrankenPHP está fijada a una versión concreta', function
 
     foreach ($etapas[1] as $etiqueta) {
         expect($etiqueta)->toMatch(
-            '/^\d+\.\d+\.\d+-php\d+\.\d+/',
-            "«{$etiqueta}» es una etiqueta flotante: fija la versión completa (p. ej. 1.12.7-php8.5-alpine)"
+            '/^\d+\.\d+\.\d+-php\d+\.\d+\.\d+-alpine@sha256:[0-9a-f]{64}$/',
+            "«{$etiqueta}» es una etiqueta flotante o no está fijada por digest: fija la versión completa de FrankenPHP, la de PHP y el digest (p. ej. 1.13.6-php8.5.13-alpine@sha256:…)"
         );
     }
 });
@@ -328,7 +328,7 @@ it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shel
     // mínima corregida, para que subir sea una tarea consciente, con su
     // commit y su build.
     preg_match_all(
-        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)-php\d+\.\d+-alpine\s*$/mi',
+        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)-php\d+\.\d+\.\d+-alpine(?:@sha256:[0-9a-f]{64})?\s*$/mi',
         (string) file_get_contents(base_path('Dockerfile')),
         $versiones
     );
@@ -340,6 +340,32 @@ it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shel
     foreach ($versiones[1] as $version) {
         expect(version_compare($version, '1.13.2', '>='))->toBeTrue(
             "«{$version}» está por debajo del mínimo FrankenPHP 1.13.2: deja abierto PHP2Shell (CVE-2026-109618/109619)"
+        );
+    }
+});
+
+it('la imagen base lleva un PHP con el arreglo de CVE-2026-126714', function () {
+    // CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): el manejador «files» de ext-session
+    // reescribe el archivo de sesión sin truncarlo, y una escritura
+    // interrumpida deja mezcladas la sesión nueva y la vieja: al deserializar
+    // eso se pueden inyectar objetos.
+    //
+    // El parche está en el intérprete: PHP 8.5.13 (y 8.4.28, 8.3.37, 8.2.36).
+    // El candado NO fija la última versión: fija la mínima corregida, para que
+    // subir sea una tarea consciente, con su commit y su build.
+    preg_match_all(
+        '/^FROM\s+dunglas\/frankenphp:\d+\.\d+\.\d+-php(\d+\.\d+\.\d+)-alpine/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $versiones
+    );
+
+    expect($versiones[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile ya no declara una imagen base de FrankenPHP con versión de PHP'
+    );
+
+    foreach ($versiones[1] as $version) {
+        expect(version_compare($version, '8.5.13', '>='))->toBeTrue(
+            "«{$version}» está por debajo del mínimo PHP 8.5.13: deja abierto CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp)"
         );
     }
 });

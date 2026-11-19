@@ -151,7 +151,20 @@ RUN npm run build
 # tests/Feature/HigieneDeDespliegueTest.php falla si alguien vuelve a dejar una
 # etiqueta flotante, y `tools/auditar.sh` lo comprueba en todos los repos
 # hermanos de una pasada.
-FROM dunglas/frankenphp:1.13.2-php8.5-alpine
+#
+# Además del número va el DIGEST: una etiqueta dice qué versión se pidió, y el
+# digest dice cuál es exactamente. Sin digest, una etiqueta —aunque no se mueva
+# hoy— puede apuntar a otra imagen mañana (si el mantenedor republica el mismo
+# número con otra compilación), y el servidor terminaría con un PHP que ningún
+# commit explica. Con digest, la imagen es la que se pidió, siempre.
+#
+# 1.13.6-php8.5.13 es el mínimo con el arreglo de CVE-2026-126714
+# (GHSA-fm2m-fjf5-v3cp): el manejador «files» de ext-session reescribe el
+# archivo de sesión sin truncarlo, y una escritura interrumpida mezcla la
+# sesión nueva con la vieja (inyección de objetos al deserializar). Las
+# etiquetas anteriores con parche (1.12.7, 1.13.1…1.13.5) quedaron congeladas en
+# PHP ≤ 8.5.12, que sigue con el defecto.
+FROM dunglas/frankenphp:1.13.6-php8.5.13-alpine@sha256:0b064e00fd2cc0c72546da62f02daeee709635879730d34cbde1922ea43e6b94
 # ──────────────────────────────────────────────────────────────────────────────
 #  Actualización del sistema base de la imagen (CVE-2026-109618 / CVE-2026-109619).
 #
