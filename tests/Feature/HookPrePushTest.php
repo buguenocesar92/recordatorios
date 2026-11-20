@@ -80,22 +80,20 @@ function rangoCubreElCommit(string $repo, string $rango, string $sha): bool
     }
 
     // `merge-base --is-ancestor` comunica por código de salida, no por stdout.
-    $salida = [];
-    $codigo = 0;
-    exec(sprintf(
-        'git -C %s merge-base --is-ancestor %s %s 2>/dev/null',
-        escapeshellarg($repo),
-        escapeshellarg($sha),
-        escapeshellarg($local)
-    ), $salida, $codigo);
+    // Se invoca con el arreglo de Process (sin shell): los argumentos viajan
+    // como están, sin pasar por `sprintf` ni por `escapeshellarg`.
+    $proceso = new Process(['git', '-C', $repo, 'merge-base', '--is-ancestor', $sha, $local]);
+    $proceso->run();
 
-    return $codigo === 0 && ! in_array('--not --remotes', $palabras, true);
+    return $proceso->getExitCode() === 0 && ! in_array('--not --remotes', $palabras, true);
 }
 
 /** ¿El rango acota la exclusión al remoto indicado y configurado? */
 function rangoAcotaLaExclusion(string $repo, string $rango, string $remoto): bool
 {
-    $remotos = trim((string) shell_exec(sprintf('git -C %s remote 2>/dev/null', escapeshellarg($repo))));
+    $proceso = new Process(['git', '-C', $repo, 'remote']);
+    $proceso->run();
+    $remotos = trim($proceso->getOutput());
 
     if (! in_array($remoto, preg_split('/\s+/', $remotos), true)) {
         return false;
