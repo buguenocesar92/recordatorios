@@ -373,7 +373,7 @@ it('bloquea el envío si el escáner o su pin no son válidos', function (string
     'hash incorrecto' => ['pin distinto', 'no coincide con el pin'],
     'sin escáner' => ['escáner ausente', 'no esta disponible o no es ejecutable'],
     'fallo del escáner' => ['escáner falla', 'escáner sintético falló'],
-]);
+])->skip(herramientaQueFaltaParaElHookPrePush() !== null, 'el hook es bash y usa git y make: sin ellos (p. ej. dentro del contenedor) no se puede ejecutar');
 
 it('escanea todas las refs de un envío y rechaza el conjunto si falla la segunda', function (bool $rechazarSegunda) {
     ['repo' => $repo, 'remoto' => $remoto] = escenarioParaElHookPrePush();
@@ -398,7 +398,7 @@ it('escanea todas las refs de un envío y rechaza el conjunto si falla la segund
         ->and(file_exists($repo.'/suite-invocada'))->toBeFalse()
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/primera'))->toBe($rechazarSegunda ? null : $primera)
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/segunda'))->toBe($rechazarSegunda ? null : $segunda);
-})->with([false, true]);
+})->with([false, true])->skip(herramientaQueFaltaParaElHookPrePush() !== null, 'el hook es bash y usa git y make: sin ellos (p. ej. dentro del contenedor) no se puede ejecutar');
 
 it('rechaza una rama nueva cuyo secreto está en un commit intermedio', function () {
     ['repo' => $repo, 'remoto' => $remoto] = escenarioParaElHookPrePush();
