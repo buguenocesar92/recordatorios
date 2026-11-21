@@ -311,8 +311,8 @@ it('la imagen base de FrankenPHP está fijada a una versión concreta', function
 
     foreach ($etapas[1] as $etiqueta) {
         expect($etiqueta)->toMatch(
-            '/^\d+\.\d+\.\d+-php\d+\.\d+/',
-            "«{$etiqueta}» es una etiqueta flotante: fija la versión completa (p. ej. 1.12.7-php8.5-alpine)"
+            '/^\d+\.\d+\.\d+-php\d+\.\d+\.\d+-alpine@sha256:[0-9a-f]{64}$/',
+            "«{$etiqueta}» es una etiqueta flotante o no está fijada por digest: fija la versión completa de FrankenPHP, la de PHP y el digest (p. ej. 1.13.6-php8.5.13-alpine@sha256:…)"
         );
     }
 });
@@ -328,7 +328,7 @@ it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shel
     // mínima corregida, para que subir sea una tarea consciente, con su
     // commit y su build.
     preg_match_all(
-        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)-php\d+\.\d+-alpine\s*$/mi',
+        '/^FROM\s+dunglas\/frankenphp:(\d+\.\d+\.\d+)-php\d+\.\d+\.\d+-alpine(?:@sha256:[0-9a-f]{64})?\s*$/mi',
         (string) file_get_contents(base_path('Dockerfile')),
         $versiones
     );
@@ -342,6 +342,131 @@ it('la imagen base de FrankenPHP no está por debajo del mínimo contra PHP2Shel
             "«{$version}» está por debajo del mínimo FrankenPHP 1.13.2: deja abierto PHP2Shell (CVE-2026-109618/109619)"
         );
     }
+});
+
+it('la imagen base lleva un PHP con el arreglo de CVE-2026-126714', function () {
+    // CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): el manejador «files» de ext-session
+    // reescribe el archivo de sesión sin truncarlo, y una escritura
+    // interrumpida deja mezcladas la sesión nueva y la vieja: al deserializar
+    // eso se pueden inyectar objetos.
+    //
+    // El parche está en el intérprete: PHP 8.5.13 (y 8.4.28, 8.3.37, 8.2.36).
+    // El candado NO fija la última versión: fija la mínima corregida, para que
+    // subir sea una tarea consciente, con su commit y su build.
+    preg_match_all(
+        '/^FROM\s+dunglas\/frankenphp:\d+\.\d+\.\d+-php(\d+\.\d+\.\d+)-alpine/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $versiones
+    );
+
+    expect($versiones[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile ya no declara una imagen base de FrankenPHP con versión de PHP'
+    );
+
+    foreach ($versiones[1] as $version) {
+        expect(version_compare($version, '8.5.13', '>='))->toBeTrue(
+            "«{$version}» está por debajo del mínimo PHP 8.5.13: deja abierto CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp)"
+        );
+    }
+});
+
+it('la imagen de Composer que compila vendor/ está fijada a versión y digest', function () {
+    // `composer:2` es una etiqueta que se MUEVE: el mantenedor la reapunta
+    // cada vez que publica una versión. El 2026-11-19 pasó a traer PHP 8.6, y
+    // la extensión «redis» de PECL —la 6.3.0, la última— NO compila contra
+    // PHP 8.6 («XtOffsetOf», «INI_STR», «INI_INT» y «zval_dtor» desaparecieron
+    // en esa versión). El build entero se rompía en la etapa «vendor», que es
+    // la primera: sin imagen no hay despliegue, y con ella no llega al
+    // servidor el arreglo de CVE-2026-126714.
+    //
+    // Se fija igual que la de FrankenPHP: versión completa Y digest.
+    preg_match_all(
+        '/^FROM\s+composer:(\S+)\s+AS vendor\s*$/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $etapas
+    );
+
+    expect($etapas[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile ya no declara una imagen de Composer para la etapa «vendor»'
+    );
+
+    foreach ($etapas[1] as $referencia) {
+        expect($referencia)->toMatch(
+            '/^\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$/',
+            "«composer:{$referencia}» es una etiqueta flotante o no está fijada por digest: fija la versión completa de Composer y el digest (p. ej. 2.11.1@sha256:…)"
+        );
+    }
+});
+
+it('la imagen de Composer que compila vendor/ no sube a una versión con PHP 8.6', function () {
+    // La extensión «redis» de PECL (6.3.0, la última publicada) usa «XtOffsetOf»,
+    // «INI_STR», «INI_INT» y «zval_dtor»: APIs que PHP 8.6 quitó. Con PHP 8.6
+    // el «install-php-extensions redis» de la etapa «vendor» no compila y el
+    // build se cae entero. Por eso la imagen de Composer se queda en la
+    // 2.11.1, que es la última que trae PHP 8.5 (8.5.12).
+    //
+    // El candado NO vigila la última versión de Composer: vigila que no se
+    // suba a una que traiga PHP 8.6 mientras «redis» no compile contra ella.
+    // Subirla, cuando toque, es una tarea consciente: con su commit y su build.
+    preg_match_all(
+        '/^FROM\s+composer:(\d+\.\d+\.\d+)@\S+\s+AS vendor\s*$/mi',
+        (string) file_get_contents(base_path('Dockerfile')),
+        $versiones
+    );
+
+    expect($versiones[1] ?? [])->not->toBeEmpty(
+        'el Dockerfile no declara una imagen de Composer FIJADA (versión completa y digest) para la etapa «vendor»: sin fijar, la etiqueta flotante puede traer un PHP con el que «redis» no compila'
+    );
+
+    foreach ($versiones[1] as $version) {
+        expect(version_compare($version, '2.11.2', '<'))->toBeTrue(
+            "«composer:{$version}» trae PHP 8.6 y la extensión «redis» de PECL no compila contra esa versión: la etapa «vendor» del build se cae. Súbela sólo cuando «redis» compile contra PHP 8.6 (o cuando la imagen vuelva a traer PHP 8.5)."
+        );
+    }
+});
+
+it('la imagen trae la mitigación de CVE-2026-126714 para las sesiones nativas', function () {
+    // CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): el manejador «files» de ext-session
+    // reescribe el archivo de sesión SIN truncarlo. Una escritura interrumpida
+    // deja la sesión nueva y la vieja mezcladas en el mismo archivo, y al
+    // deserializar eso se pueden inyectar objetos: ejecución remota de código.
+    //
+    // El vector de entrada es «session.upload_progress»: con la clave de sesión
+    // «PHP_SESSION_UPLOAD_PROGRESS» el atacante abre una sesión nativa «files»
+    // desde cualquier petición multipart. Laravel no usa ext-session (sus
+    // drivers son propios), pero ese manejador RFC1867 sí crea sesiones
+    // nativas en cualquier petición multipart con cookie «PHPSESSID». Por eso
+    // la mitigación va en el php.ini de la imagen y no en «config/session.php».
+    $ini = base_path('docker/php/99-security-cve-2026-126714.ini');
+
+    expect(file_exists($ini))->toBeTrue(
+        'Falta la mitigación de CVE-2026-126714: docker/php/99-security-cve-2026-126714.ini'
+    );
+
+    // LÍNEAS EXACTAS, no «que las contenga»: una directiva con el valor
+    // equivocado (o con otro espaciado) no mitiga nada y el candado tiene que
+    // notarlo.
+    $lineas = preg_split('/\R/', (string) file_get_contents($ini)) ?: [];
+
+    foreach ([
+        'session.upload_progress.enabled = Off',
+        'session.upload_progress.cleanup = On',
+        'session.serialize_handler = php_serialize',
+        'session.use_strict_mode = 1',
+    ] as $directiva) {
+        expect(in_array($directiva, $lineas, true))->toBeTrue(
+            "El ini de CVE-2026-126714 no fija la directiva exacta «{$directiva}»"
+        );
+    }
+
+    // Y que llegue a la imagen: un ini en el repositorio que nadie copia es un
+    // documento, no una mitigación.
+    $dockerfile = (string) file_get_contents(base_path('Dockerfile'));
+
+    expect($dockerfile)->toMatch(
+        '#^COPY\s+docker/php/99-security-cve-2026-126714\.ini\s+/usr/local/etc/php/conf\.d/99-security-cve-2026-126714\.ini\s*$#m',
+        'El Dockerfile no copia el ini de CVE-2026-126714 al conf.d de PHP'
+    );
 });
 
 it('la imagen sabe decir si está sana, y lo dice con una shell', function () {

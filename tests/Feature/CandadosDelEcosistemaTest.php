@@ -86,7 +86,7 @@ describe('imagenDeProduccion', function () {
 
         expect($dockerfile)
             ->toContain('composer install --no-dev')
-            ->toMatch('/^FROM dunglas\/frankenphp:\d+\.\d+\.\d+-php[\d.]+-alpine\s*$/m')
+            ->toMatch('/^FROM dunglas\/frankenphp:\d+\.\d+\.\d+-php\d+\.\d+\.\d+-alpine@sha256:[0-9a-f]{64}\s*$/m')
             ->not->toMatch('/^ENV\s+APP_DEBUG\s*=?\s*true/mi')
             ->not->toMatch('/^ENV\s+APP_ENV\s*=?\s*(local|testing)/mi');
     });
