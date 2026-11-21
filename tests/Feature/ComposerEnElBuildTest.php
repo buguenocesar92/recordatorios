@@ -60,14 +60,36 @@ it('fija install-php-extensions en la etapa vendor antes de ejecutarlo', functio
     $copy = 'COPY --from=mlocati/php-extension-installer:2.13.1@sha256:35821db0661308f64aa18483bb3af56bedc3b40090ff441ed961327d1ccbceb8 /usr/bin/install-php-extensions /usr/local/bin/';
     $run = 'RUN install-php-extensions pdo_mysql pcntl redis zip gd intl';
 
-    $indiceVendor = array_search('FROM composer:2 AS vendor', $lineas, true);
-    $indiceRuntime = array_search('FROM dunglas/frankenphp:1.13.2-php8.5-alpine', $lineas, true);
+    // La etapa «vendor» se busca por patrón y no por la etiqueta literal: lo
+    // que esta prueba vigila es el ORDEN de las etapas, no qué versión de
+    // Composer hay (eso lo vigilan los candados de HigieneDeDespliegueTest).
+    // Con la etiqueta literal, cada subida de versión tenía que tocar también
+    // este archivo, y el digest lo haría ilegible.
+    $indiceVendor = null;
+    foreach ($lineas as $indice => $linea) {
+        if (preg_match('/^FROM\s+composer:\S+\s+AS vendor\s*$/', $linea) === 1) {
+            $indiceVendor = $indice;
+            break;
+        }
+    }
+    // La etapa de runtime se busca por patrón y no por la etiqueta exacta: lo
+    // que esta prueba vigila es el ORDEN de las etapas, no qué versión de
+    // FrankenPHP hay (eso lo vigilan los candados de HigieneDeDespliegueTest).
+    // Con la etiqueta literal, cada subida de versión tenía que tocar también
+    // este archivo, y el digest lo haría ilegible.
+    $indiceRuntime = null;
+    foreach ($lineas as $indice => $linea) {
+        if (preg_match('/^FROM\s+dunglas\/frankenphp:/', $linea) === 1) {
+            $indiceRuntime = $indice;
+            break;
+        }
+    }
     $indiceComentario = array_search($comentario, $lineas, true);
     $indiceCopy = array_search($copy, $lineas, true);
     $indiceRun = array_search($run, $lineas, true);
 
-    expect($indiceVendor)->not->toBeFalse()
-        ->and($indiceRuntime)->not->toBeFalse()
+    expect($indiceVendor)->not->toBeNull()
+        ->and($indiceRuntime)->not->toBeNull()
         ->and($indiceComentario)->not->toBeFalse()
         ->and($indiceCopy)->not->toBeFalse()
         ->and($indiceRun)->not->toBeFalse()

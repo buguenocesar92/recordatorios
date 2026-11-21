@@ -80,22 +80,20 @@ function rangoCubreElCommit(string $repo, string $rango, string $sha): bool
     }
 
     // `merge-base --is-ancestor` comunica por código de salida, no por stdout.
-    $salida = [];
-    $codigo = 0;
-    exec(sprintf(
-        'git -C %s merge-base --is-ancestor %s %s 2>/dev/null',
-        escapeshellarg($repo),
-        escapeshellarg($sha),
-        escapeshellarg($local)
-    ), $salida, $codigo);
+    // Se invoca con el arreglo de Process (sin shell): los argumentos viajan
+    // como están, sin pasar por `sprintf` ni por `escapeshellarg`.
+    $proceso = new Process(['git', '-C', $repo, 'merge-base', '--is-ancestor', $sha, $local]);
+    $proceso->run();
 
-    return $codigo === 0 && ! in_array('--not --remotes', $palabras, true);
+    return $proceso->getExitCode() === 0 && ! in_array('--not --remotes', $palabras, true);
 }
 
 /** ¿El rango acota la exclusión al remoto indicado y configurado? */
 function rangoAcotaLaExclusion(string $repo, string $rango, string $remoto): bool
 {
-    $remotos = trim((string) shell_exec(sprintf('git -C %s remote 2>/dev/null', escapeshellarg($repo))));
+    $proceso = new Process(['git', '-C', $repo, 'remote']);
+    $proceso->run();
+    $remotos = trim($proceso->getOutput());
 
     if (! in_array($remoto, preg_split('/\s+/', $remotos), true)) {
         return false;
@@ -373,7 +371,7 @@ it('bloquea el envío si el escáner o su pin no son válidos', function (string
     'hash incorrecto' => ['pin distinto', 'no coincide con el pin'],
     'sin escáner' => ['escáner ausente', 'no esta disponible o no es ejecutable'],
     'fallo del escáner' => ['escáner falla', 'escáner sintético falló'],
-]);
+])->skip(herramientaQueFaltaParaElHookPrePush() !== null, 'el hook es bash y usa git y make: sin ellos (p. ej. dentro del contenedor) no se puede ejecutar');
 
 it('escanea todas las refs de un envío y rechaza el conjunto si falla la segunda', function (bool $rechazarSegunda) {
     ['repo' => $repo, 'remoto' => $remoto] = escenarioParaElHookPrePush();
@@ -398,7 +396,7 @@ it('escanea todas las refs de un envío y rechaza el conjunto si falla la segund
         ->and(file_exists($repo.'/suite-invocada'))->toBeFalse()
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/primera'))->toBe($rechazarSegunda ? null : $primera)
         ->and(shaEnElRemotoDelHookPrePush($remoto, 'feat/segunda'))->toBe($rechazarSegunda ? null : $segunda);
-})->with([false, true]);
+})->with([false, true])->skip(herramientaQueFaltaParaElHookPrePush() !== null, 'el hook es bash y usa git y make: sin ellos (p. ej. dentro del contenedor) no se puede ejecutar');
 
 it('rechaza una rama nueva cuyo secreto está en un commit intermedio', function () {
     ['repo' => $repo, 'remoto' => $remoto] = escenarioParaElHookPrePush();
