@@ -18,13 +18,36 @@ concurrency:
   group: despliegue-${{ github.ref }}
   cancel-in-progress: false
 
+# El token de este workflow solo LEE el repositorio. El job que publica la
+# imagen en el registro necesita además `packages: write`, y lo declara en el
+# propio job: el runner que vive dentro del servidor de despliegue no
+# recibe ningún permiso de escritura.
+permissions:
+  contents: read
+
+# Runner: VMs efímeras del Xeon (etiqueta `xeon-ci`) si la variable de
+# repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub.
+# Dependabot también entra al Xeon por la excepción explícita
+# `github.actor == 'dependabot[bot]'`, aunque RUNNER_CI no esté definida. Las PR
+# desde forks siguen yendo SIEMPRE a GitHub: el runner propio no ejecuta
+# código de terceros. La variable es el interruptor de apagado del runner
+# propio. Volver a GitHub es
+# `gh variable delete RUNNER_CI`, sin tocar este archivo.
+#
+# Este workflow NO se dispara con PR: solo con `push` a main (y a mano). El
+# runner propio ejecuta, entonces, código ya fusionado, que es de confianza.
+#
+# El job que instala en el servidor NO se toca: ese runner vive dentro del
+# servidor de despliegue (etiqueta `despliegue`) y no en el Xeon.
+
 env:
   IMAGEN: ghcr.io/${{ github.repository }}
 
 jobs:
   construir:
     name: Construir, comprobar y publicar la imagen
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

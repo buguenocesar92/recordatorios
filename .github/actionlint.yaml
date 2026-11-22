@@ -1,0 +1,20 @@
+# Configuración de actionlint (https://github.com/rhysd/actionlint).
+#
+# Sin este archivo, actionlint se queja por cada etiqueta propia: no conoce
+# los runners que no son de GitHub y las da por desconocidas. Declararlas aquí
+# no silencia el chequeo: actionlint sigue validando todo lo demás.
+
+self-hosted-runner:
+  # Etiquetas de los runners propios:
+  #   - xeon-ci: VMs efímeras del host Xeon (el despachador personal).
+  #   - despliegue: el runner instalado dentro del servidor de despliegue.
+  labels:
+    - xeon-ci
+    - despliegue
+
+# Variables de repositorio que los workflows pueden leer. Lista blanca: si un
+# workflow usa una variable que no está acá, actionlint lo dice.
+config-variables:
+  - RUNNER_CI
+  - RUTA_DESPLIEGUE
+  - URL_SALUD

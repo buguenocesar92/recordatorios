@@ -14,10 +14,37 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# El token de este workflow solo LEE el repositorio: ningún paso escribe nada
+# en GitHub. Se declara explícito para que el runner propio no reciba más de
+# lo que necesita, y no dependa de cómo esté puesto el permiso por defecto del
+# repositorio (que hoy también es `read`).
+permissions:
+  contents: read
+
+# Runner: VMs efímeras del Xeon (etiqueta `xeon-ci`) si la variable de
+# repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub.
+# Dependabot también entra al Xeon por la excepción explícita
+# `github.actor == 'dependabot[bot]'`, aunque RUNNER_CI no esté definida. Las PR
+# desde forks siguen yendo SIEMPRE a GitHub: el runner propio no ejecuta
+# código de terceros. La variable es el interruptor de apagado del runner
+# propio. Volver a GitHub es
+# `gh variable delete RUNNER_CI`, sin tocar este archivo.
+#
+# Límite de confianza del runner propio: una PR del mismo repo (alguien con
+# permiso de escritura, o Dependabot) sí puede ejecutar su código ahí. Lo que
+# acota ese riesgo:
+#   - la VM es efímera (un job y se descarta) y su red solo sale a internet:
+#     la red del Xeon bloquea la LAN, Tailscale y el propio host
+#     (`ci-xeon-red`, tabla nftables `inet ci_xeon`);
+#   - el GITHUB_TOKEN de este workflow es de solo lectura;
+#   - una PR desde un fork nunca llega a este runner.
+# Mandar toda PR a GitHub no es una opción: los runners hospedados de esta
+# cuenta están bloqueados por facturación, así que el job se quedaría en cola
+# para siempre y no habría CI que valida nada.
 jobs:
   tests:
     name: Pint + Pest
-    runs-on: ubuntu-latest
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     services:
@@ -126,7 +153,7 @@ jobs:
 
   seguridad:
     name: Trivy (vulnerabilidades)
-    runs-on: ubuntu-latest
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     # No bloquea el merge (Report-Only): reporta CVEs de deps/SO, secretos y
     # malas configuraciones para revisarlos. Complementa composer audit.
@@ -157,7 +184,7 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ubuntu-latest
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     # El continue-on-error va SOLO en el paso frágil (más abajo), no en el job.
     # Puesto acá arriba absorbía TAMBIÉN el fallo del paso de accesibilidad, que
@@ -346,7 +373,7 @@ jobs:
   # ────────────────────────────────────────────────────────────────────────────
   secretos:
     name: Secretos (gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
