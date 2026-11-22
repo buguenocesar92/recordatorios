@@ -45,7 +45,7 @@ permissions:
 jobs:
   tests:
     name: Pint + Pest
-    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     services:
@@ -154,7 +154,7 @@ jobs:
 
   seguridad:
     name: Trivy (vulnerabilidades)
-    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     # No bloquea el merge (Report-Only): reporta CVEs de deps/SO, secretos y
     # malas configuraciones para revisarlos. Complementa composer audit.
@@ -185,7 +185,7 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     # El continue-on-error va SOLO en el paso frágil (más abajo), no en el job.
     # Puesto acá arriba absorbía TAMBIÉN el fallo del paso de accesibilidad, que
@@ -374,7 +374,7 @@ jobs:
   # ────────────────────────────────────────────────────────────────────────────
   secretos:
     name: Secretos (gitleaks)
-    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7

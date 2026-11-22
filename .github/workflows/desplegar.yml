@@ -45,7 +45,7 @@ env:
 jobs:
   construir:
     name: Construir, comprobar y publicar la imagen
-    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read
