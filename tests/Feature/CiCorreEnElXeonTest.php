@@ -157,6 +157,52 @@ it('el workflow que despliega solo corre código ya fusionado', function () {
     expect($disparadores['push']['branches'] ?? [])->toContain('main');
 });
 
+it('los jobs de despliegue que publican o usan secretos solo corren en main', function () use ($workflows) {
+    $workflow = $workflows()['desplegar.yml'] ?? [];
+    $privilegiados = [];
+
+    $contieneSecretos = function (mixed $valor) use (&$contieneSecretos): bool {
+        if (is_string($valor)) {
+            return str_contains($valor, 'secrets.');
+        }
+
+        if (! is_array($valor)) {
+            return false;
+        }
+
+        foreach ($valor as $hijo) {
+            if ($contieneSecretos($hijo)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    foreach (($workflow['jobs'] ?? []) as $nombre => $job) {
+        if (! is_array($job)) {
+            continue;
+        }
+
+        $publicaImagen = ($job['permissions']['packages'] ?? null) === 'write';
+
+        if (! $publicaImagen && ! $contieneSecretos($job)) {
+            continue;
+        }
+
+        $privilegiados[] = $nombre;
+
+        expect($job['if'] ?? null)->toBe(
+            "github.ref == 'refs/heads/main'",
+            "El job de despliegue «{$nombre}» publica o usa secretos fuera de main."
+        );
+    }
+
+    expect($privilegiados)->not->toBeEmpty(
+        'No encontré jobs de despliegue que publiquen o usen secretos: el candado no probaría nada.'
+    );
+});
+
 it('ningún workflow usa eventos que corren el código del PR con el token del repositorio', function () use ($workflows) {
     // `pull_request_target` y `merge_group` corren el workflow en el contexto
     // del repositorio base, con sus secretos y su token: el vector clásico
