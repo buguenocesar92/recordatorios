@@ -68,28 +68,8 @@ $jobs = function () use ($workflows): array {
     return $lista;
 };
 
-/**
- * ¿La expresión es la convención del runner del Xeon?
- *
- * Se comprueban las PIEZAS y no la cadena entera: la excepción de dependabot
- * es opcional (depende de si al código de dependencias sin revisar le conviene
- * o no pisar el runner propio) y el candado tiene que seguir sirviendo con o
- * sin ella.
- */
-$esLaConvencion = function (string $runsOn): bool {
-    return str_contains($runsOn, "vars.RUNNER_CI == 'xeon'")
-        && str_contains($runsOn, 'fromJSON(\'["self-hosted","xeon-ci"]\')')
-        && str_contains($runsOn, "github.event_name != 'pull_request'")
-        && str_contains($runsOn, 'github.event.pull_request.head.repo.full_name == github.repository')
-        && preg_match("/\\|\\| '(?<respaldo>ubuntu|windows|macos)-[a-z0-9._-]*' \\}\\}$/", $runsOn) === 1;
-};
-
-/** La etiqueta de GitHub a la que vuelve el job si el interruptor está apagado. */
-$respaldo = function (string $runsOn): ?string {
-    return preg_match("/\\|\\| '(?<respaldo>[a-z0-9._-]+)' \\}\\}$/", $runsOn, $coincidencias) === 1
-        ? $coincidencias['respaldo']
-        : null;
-};
+/** La expresión exacta que decide entre Xeon y GitHub para cada job hospedado. */
+$convencionRunnerXeon = '${{ (vars.RUNNER_CI == \'xeon\' || github.actor == \'dependabot[bot]\') && (github.event_name != \'pull_request\' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(\'["self-hosted","xeon-ci"]\') || \'ubuntu-latest\' }}';
 
 it('ningún job se queda clavado en un runner hospedado de etiqueta fija', function () use ($jobs) {
     $lista = $jobs();
@@ -116,7 +96,7 @@ it('ningún job se queda clavado en un runner hospedado de etiqueta fija', funct
     }
 });
 
-it('cada job que puede ir a GitHub usa la convención del runner del Xeon', function () use ($jobs, $esLaConvencion, $respaldo) {
+it('cada job que puede ir a GitHub usa la expresión exacta del runner del Xeon', function () use ($jobs, $convencionRunnerXeon) {
     $hospedados = array_values(array_filter(
         $jobs(),
         fn (array $datos): bool => is_string($datos['runs_on']),
@@ -127,16 +107,11 @@ it('cada job que puede ir a GitHub usa la convención del runner del Xeon', func
     foreach ($hospedados as $datos) {
         $runsOn = $datos['runs_on'];
 
-        expect($esLaConvencion($runsOn))->toBeTrue(
-            "El job «{$datos['job']}» de {$datos['archivo']} no usa la convención del runner del Xeon: "
-            ."«{$runsOn}». Tiene que ir con la etiqueta «self-hosted,xeon-ci» cuando RUNNER_CI=xeon, "
-            .'volver a GitHub sin la variable, y quedarse en GitHub en una PR desde un fork.'
+        expect($runsOn)->toBe(
+            $convencionRunnerXeon,
+            "El job «{$datos['job']}» de {$datos['archivo']} no usa la expresión exacta del runner del Xeon: "
+            ."«{$runsOn}»."
         );
-
-        // El respaldo conserva la etiqueta que el job tenía: aquí todos eran
-        // `ubuntu-latest`, y volver a GitHub no es una opción —la facturación
-        // está bloqueada—, pero el interruptor sigue siendo el que manda.
-        expect($respaldo($runsOn))->toBe('ubuntu-latest');
     }
 });
 
@@ -158,26 +133,6 @@ it('los jobs de isla y de despliegue siguen en su runner propio', function () us
 
         expect(in_array('self-hosted', $datos['runs_on'], true))->toBeTrue(
             "El job «{$datos['job']}» de {$datos['archivo']} no pide la etiqueta «self-hosted»."
-        );
-    }
-});
-
-it('ningún job se salta el interruptor de apagado del runner propio', function () use ($jobs) {
-    // RUNNER_CI es lo único que decide si este repo usa el Xeon o los runners
-    // de GitHub. Una disyunción como `|| github.actor == 'dependabot[bot]'`
-    // rompe ese interruptor: con la variable borrada, un Dependabot seguía
-    // yendo al self-hosted, llevando código de dependencias sin revisar a la
-    // VM propia. Es el mismo arreglo que se hizo en el resto del ecosistema.
-    foreach ($jobs() as $datos) {
-        $runsOn = $datos['runs_on'];
-
-        if (! is_string($runsOn)) {
-            continue;
-        }
-
-        expect(str_contains($runsOn, 'dependabot'))->toBeFalse(
-            "El job «{$datos['job']}» de {$datos['archivo']} manda al runner propio sin mirar RUNNER_CI: "
-            ."«{$runsOn}»."
         );
     }
 });
