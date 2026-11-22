@@ -14,6 +14,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# El token de este workflow solo LEE el repositorio: ningún paso escribe nada
+# en GitHub. Se declara explícito para que el runner propio no reciba más de
+# lo que necesita, y no dependa de cómo esté puesto el permiso por defecto del
+# repositorio (que hoy también es `read`).
+permissions:
+  contents: read
+
 # Runner: VMs efímeras del Xeon (etiqueta `xeon-ci`) si la variable de
 # repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub. Las PR
 # desde forks siguen yendo SIEMPRE a GitHub: el runner propio no ejecuta
@@ -23,6 +30,18 @@ concurrency:
 # un `|| github.actor == 'dependabot[bot]'` lo saltaría llevando código de
 # dependencias sin revisar al self-hosted. Volver a GitHub es
 # `gh variable delete RUNNER_CI`, sin tocar este archivo.
+#
+# Límite de confianza del runner propio: una PR del mismo repo (alguien con
+# permiso de escritura, o Dependabot) sí puede ejecutar su código ahí. Lo que
+# acota ese riesgo:
+#   - la VM es efímera (un job y se descarta) y su red solo sale a internet:
+#     la red del Xeon bloquea la LAN, Tailscale y el propio host
+#     (`ci-xeon-red`, tabla nftables `inet ci_xeon`);
+#   - el GITHUB_TOKEN de este workflow es de solo lectura;
+#   - una PR desde un fork nunca llega a este runner.
+# Mandar toda PR a GitHub no es una opción: los runners hospedados de esta
+# cuenta están bloqueados por facturación, así que el job se quedaría en cola
+# para siempre y no habría CI que valida nada.
 jobs:
   tests:
     name: Pint + Pest

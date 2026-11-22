@@ -18,6 +18,13 @@ concurrency:
   group: despliegue-${{ github.ref }}
   cancel-in-progress: false
 
+# El token de este workflow solo LEE el repositorio. El job que publica la
+# imagen en el registro necesita además `packages: write`, y lo declara en el
+# propio job: el runner que vive dentro del servidor de despliegue no
+# recibe ningún permiso de escritura.
+permissions:
+  contents: read
+
 # Runner: VMs efímeras del Xeon (etiqueta `xeon-ci`) si la variable de
 # repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub. Las PR
 # desde forks siguen yendo SIEMPRE a GitHub: el runner propio no ejecuta
@@ -25,6 +32,9 @@ concurrency:
 # interruptor de apagado del runner propio, y saltárselo llevaría código de
 # dependencias sin revisar al self-hosted. Volver a GitHub es
 # `gh variable delete RUNNER_CI`, sin tocar este archivo.
+#
+# Este workflow NO se dispara con PR: solo con `push` a main (y a mano). El
+# runner propio ejecuta, entonces, código ya fusionado, que es de confianza.
 #
 # El job que instala en el servidor NO se toca: ese runner vive dentro del
 # servidor de despliegue (etiqueta `despliegue`) y no en el Xeon.

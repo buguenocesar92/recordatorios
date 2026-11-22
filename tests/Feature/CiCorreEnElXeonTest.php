@@ -181,3 +181,56 @@ it('ningún job se salta el interruptor de apagado del runner propio', function 
         );
     }
 });
+
+it('el workflow que despliega solo corre código ya fusionado', function () {
+    // El job que instala en el servidor corre en el runner que vive DENTRO del
+    // servidor de despliegue: el más privilegiado de la flota. Este workflow no
+    // se dispara con PR, así que ese runner solo ejecuta código que ya está
+    // en main.
+    $workflow = Yaml::parseFile(base_path('.github/workflows/desplegar.yml'));
+    $disparadores = $workflow['on'] ?? [];
+
+    expect(is_array($disparadores))->toBeTrue('No encontré los disparadores del workflow de despliegue.');
+
+    foreach (['pull_request', 'pull_request_target'] as $evento) {
+        expect(array_key_exists($evento, $disparadores))->toBeFalse(
+            "El workflow de despliegue se dispara con «{$evento}»: el runner del servidor "
+            .'ejecutaría el código de la PR.'
+        );
+    }
+
+    expect($disparadores['push']['branches'] ?? [])->toContain('main');
+});
+
+it('ningún workflow usa eventos que corren el código del PR con el token del repositorio', function () use ($workflows) {
+    // `pull_request_target` y `merge_group` corren el workflow en el contexto
+    // del repositorio base, con sus secretos y su token: el vector clásico
+    // para ejecutar código de una PR con permisos de escritura.
+    foreach ($workflows() as $archivo => $workflow) {
+        $disparadores = $workflow['on'] ?? [];
+        $claves = array_keys(is_array($disparadores) ? $disparadores : []);
+
+        foreach (['pull_request_target', 'merge_group'] as $evento) {
+            expect(in_array($evento, $claves, true))->toBeFalse(
+                "{$archivo} se dispara con «{$evento}»: ese evento corre el workflow con los secretos "
+                .'y el token del repositorio base.'
+            );
+        }
+    }
+});
+
+it('el token de los workflows es de solo lectura por omisión', function () use ($workflows) {
+    // Declarado en el workflow, no heredado: así el runner propio —o el que
+    // vive dentro del servidor de despliegue— no recibe permisos de escritura
+    // por el hecho de que mañana alguien cambie el permiso por defecto del
+    // repositorio.
+    foreach ($workflows() as $archivo => $workflow) {
+        $permisos = $workflow['permissions'] ?? null;
+
+        expect(is_array($permisos))->toBeTrue(
+            "{$archivo} no declara `permissions`: el token toma lo que tenga puesto el repositorio."
+        );
+
+        expect($permisos['contents'] ?? null)->toBe('read', "{$archivo} no declara `contents: read`.");
+    }
+});
