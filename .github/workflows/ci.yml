@@ -22,13 +22,12 @@ permissions:
   contents: read
 
 # Runner: VMs efímeras del Xeon (etiqueta `xeon-ci`) si la variable de
-# repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub. Las PR
+# repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub.
+# Dependabot también entra al Xeon por la excepción explícita
+# `github.actor == 'dependabot[bot]'`, aunque RUNNER_CI no esté definida. Las PR
 # desde forks siguen yendo SIEMPRE a GitHub: el runner propio no ejecuta
-# código de terceros. Dependabot NO tiene excepción: sin la variable va a
-# GitHub como todo lo demás, y con la variable entra al Xeon como cualquier PR
-# del mismo repo. La variable es el interruptor de apagado del runner propio, y
-# un `|| github.actor == 'dependabot[bot]'` lo saltaría llevando código de
-# dependencias sin revisar al self-hosted. Volver a GitHub es
+# código de terceros. La variable es el interruptor de apagado del runner
+# propio. Volver a GitHub es
 # `gh variable delete RUNNER_CI`, sin tocar este archivo.
 #
 # Límite de confianza del runner propio: una PR del mismo repo (alguien con
