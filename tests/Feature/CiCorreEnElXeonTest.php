@@ -161,3 +161,23 @@ it('los jobs de isla y de despliegue siguen en su runner propio', function () us
         );
     }
 });
+
+it('ningún job se salta el interruptor de apagado del runner propio', function () use ($jobs) {
+    // RUNNER_CI es lo único que decide si este repo usa el Xeon o los runners
+    // de GitHub. Una disyunción como `|| github.actor == 'dependabot[bot]'`
+    // rompe ese interruptor: con la variable borrada, un Dependabot seguía
+    // yendo al self-hosted, llevando código de dependencias sin revisar a la
+    // VM propia. Es el mismo arreglo que se hizo en el resto del ecosistema.
+    foreach ($jobs() as $datos) {
+        $runsOn = $datos['runs_on'];
+
+        if (! is_string($runsOn)) {
+            continue;
+        }
+
+        expect(str_contains($runsOn, 'dependabot'))->toBeFalse(
+            "El job «{$datos['job']}» de {$datos['archivo']} manda al runner propio sin mirar RUNNER_CI: "
+            ."«{$runsOn}»."
+        );
+    }
+});

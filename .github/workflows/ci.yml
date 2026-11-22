@@ -17,16 +17,16 @@ concurrency:
 # Runner: VMs efímeras del Xeon (etiqueta `xeon-ci`) si la variable de
 # repositorio RUNNER_CI vale `xeon`; si no, `ubuntu-latest` de GitHub. Las PR
 # desde forks siguen yendo SIEMPRE a GitHub: el runner propio no ejecuta
-# código de terceros. Volver a GitHub es `gh variable delete RUNNER_CI`, sin
-# tocar este archivo.
-#
-# Dependabot tiene excepción: sus PR son del mismo repositorio —la guarda de
-# forks las deja pasar— y, con la facturación de GitHub bloqueada, en los
-# runners hospedados se quedarían en cola para siempre.
+# código de terceros. Dependabot NO tiene excepción: sin la variable va a
+# GitHub como todo lo demás, y con la variable entra al Xeon como cualquier PR
+# del mismo repo. La variable es el interruptor de apagado del runner propio, y
+# un `|| github.actor == 'dependabot[bot]'` lo saltaría llevando código de
+# dependencias sin revisar al self-hosted. Volver a GitHub es
+# `gh variable delete RUNNER_CI`, sin tocar este archivo.
 jobs:
   tests:
     name: Pint + Pest
-    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     services:
@@ -135,7 +135,7 @@ jobs:
 
   seguridad:
     name: Trivy (vulnerabilidades)
-    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     # No bloquea el merge (Report-Only): reporta CVEs de deps/SO, secretos y
     # malas configuraciones para revisarlos. Complementa composer audit.
@@ -166,7 +166,7 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     # El continue-on-error va SOLO en el paso frágil (más abajo), no en el job.
     # Puesto acá arriba absorbía TAMBIÉN el fallo del paso de accesibilidad, que
@@ -355,7 +355,7 @@ jobs:
   # ────────────────────────────────────────────────────────────────────────────
   secretos:
     name: Secretos (gitleaks)
-    runs-on: ${{ (vars.RUNNER_CI == 'xeon' || github.actor == 'dependabot[bot]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.RUNNER_CI == 'xeon' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","xeon-ci"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
