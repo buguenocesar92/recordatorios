@@ -132,6 +132,12 @@ services:
       # recrearlo (`docker compose down -v db && docker compose up -d db`) para
       # que se apliquen.
       - ./docker/mariadb-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     networks:
       - recordatorios_network
 
@@ -142,6 +148,12 @@ services:
     cpus: 0.5
     restart: unless-stopped
     image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - recordatorios_network
 
